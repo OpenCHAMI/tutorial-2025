@@ -1,0 +1,43 @@
+options:
+  layer_type: 'base'
+  name: 'rocky9-base'
+  publish_tags: '9'
+  pkg_manager: 'dnf'
+  parent: 'scratch'
+  publish_registry: 'registry.lovelltroy.net'
+  registry_opts_push:
+    - '--tls-verify=false'
+
+repos:
+  - alias: 'Rock_BaseOS'
+    url: 'https://download.rockylinux.org/pub/rocky/9/BaseOS/x86_64/os/'
+    gpg: 'https://dl.rockylinux.org/pub/rocky/RPM-GPG-KEY-Rocky-9'
+  - alias: 'Rock_AppStream'
+    url: 'https://download.rockylinux.org/pub/rocky/9/AppStream/x86_64/os/'
+    gpg: 'https://dl.rockylinux.org/pub/rocky/RPM-GPG-KEY-Rocky-9'
+  - alias: 'Epel'
+    url: 'https://dl.fedoraproject.org/pub/epel/9/Everything/x86_64/'
+    gpg: 'https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-9'
+
+
+package_groups:
+  - 'Minimal Install'
+
+packages:
+  - kernel
+  - wget
+  - dracut-live
+  - dmidecode
+  - tpm2-tools
+  - tpm2-abrmd
+  - tpm2-tss
+  - vim
+  - curl
+  - tmux
+  - cloud-init
+  - wireguard-tools
+  - jq
+
+cmds:
+  - cmd: 'dracut --add "dmsquash-live livenet network-manager" --kver $(basename /lib/modules/*) -N -f --logfile /tmp/dracut.log 2>/dev/null'
+  - cmd: 'echo DRACUT LOG:; cat /tmp/dracut.log'
