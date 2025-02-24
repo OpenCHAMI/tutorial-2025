@@ -1,0 +1,66 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AllowRunInstancesWithSpecificLaunchTemplates",
+            "Effect": "Allow",
+            "Action": [
+                "ec2:RunInstances"
+            ],
+            "Resource": "*",
+            "Condition": {
+                "StringEquals": {
+                    "ec2:LaunchTemplate": [
+                        "arn:aws:ec2:us-west-1:462343518644:launch-template/lt-033c6126fe38a0b24",
+                        "arn:aws:ec2:us-west-1:462343518644:launch-template/lt-06a39c41413a9c142"
+                    ]
+                }
+            }
+        },
+        {
+            "Sid": "AllowTerminateInstancesWithTag",
+            "Effect": "Allow",
+            "Action": "ec2:TerminateInstances",
+            "Resource": "*",
+            "Condition": {
+                "StringEquals": {
+                    "ec2:ResourceTag/LaunchedBy": "Tutorial2025Template"
+                }
+            }
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ec2:CreateKeyPair",
+                "ec2:DescribeInstances",
+                "ec2:DescribeKeyPairs",
+                "ec2:DescribeLaunchTemplates",
+                "ec2:DescribeLaunchTemplateVersions",
+                "ec2:DescribeSecurityGroups",
+                "ec2:GetSecurityGroupsForVpc",
+                "ec2:DescribeVpcs",
+                "ec2:DescribeSecurityGroupRules",
+                "ec2:DescribeImages",
+                "aws-marketplace:ViewSubscriptions",
+                "aws-marketplace:Subscribe",
+                "cloudshell:*",
+                "ec2:DescribeVolumes",
+                "ec2:DescribeInstanceStatus",
+                "cloudwatch:DescribeAlarms",
+                "ec2:DescribeAddresses",
+                "ec2:CreateTags",
+                "ec2:DescribeTags"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "cloudwatch:ListMetrics",
+                "cloudwatch:GetMetricData",
+                "cloudwatch:GetMetricStatistics"
+            ],
+            "Resource": "*"
+        }
+    ]
+}
