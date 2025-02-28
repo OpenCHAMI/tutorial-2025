@@ -32,6 +32,21 @@ This repository walks a user through setting up an EC2 instance to test the Open
        - newgrp libvirt
      ```
 
+1. We will serve the root filesystems of our diskless nodes using nfs.  Configure NFS to serve your squashfs nfsroot with as much performance as possible.
+  - Create `/opt/nfsroot` to store our images
+    ```bash
+    sudo mkdir /opt/nfsroot && sudo chown rocky /opt/nfsroot
+    ```
+  - Create `/etc/exports` with the following contents to export the `/opt/nfsroot` directory for use by our compute nodes
+    ```bash
+    /opt/nfsroot *(ro,no_root_squash,no_subtree_check,noatime,async,fsid=0)
+    ```
+  - Reload the nfs daemon
+    ```bash
+    modprobe -r nfsd && modprobe nfsd
+    ```
+
+
 1. Create the virtual node information
   - Each node will need a dedicated MAC address that we will load into OpenCHAMI as a "discovered" node.  Since we'll probably be restarting these diskless nodes fairly regularly, we should keep a list of our mac addresses handy.  For the tutorial, we'll use MACs that have already been assigned to RedHat for QEMU so there's no chance of a collision with a real MAC.
   ```
@@ -89,9 +104,10 @@ This repository walks a user through setting up an EC2 instance to test the Open
   - Use the `ochami` command to verify that unauthenticated operations are successful
   
 1. Use the OpenCHAMI image-builder to configure a system image for the compute nodes to use.
-  - Run a local container registry: ` podman container run -dt -p 5000:5000 --name registry docker.io/library/registry:2`
+  - Run a local container registry: `podman container run -dt -p 5000:5000 --name registry docker.io/library/registry:2`
 1. Manage system image(s) in a container registry
-  - Create a system image for the computes: ` podman run --rm --device /dev/fuse --security-opt label=disable -v ${PWD}:/home/builder/:Z ghcr.io/openchami/image-build image-build --config image-configs/rocky-9-base.yaml --log-level DEBUG`
+  - Create a system image for the computes: `podman run --rm --device /dev/fuse --security-opt label=disable -v ${PWD}:/home/builder/:Z ghcr.io/openchami/image-build image-build --config image-configs/rocky-9-base.yaml --log-level DEBUG`
+    `podman run --rm --userns=keep-id --device /dev/fuse --security-opt label=disable -v /opt/workdir/:/home/builder/:Z ghcr.io/openchami/image-build image-build --config rocky-9-base.yaml --log-level DEBUG`
 1. Make system images from a container registry available for nfs boot
 1. Create virtual diskless compute nodes using [virsh](https://www.libvirt.org/index.html), the linux kernel virtualization toolkit
 
