@@ -31,12 +31,30 @@ if [ "$#" -ne 2 ]; then
 fi
 IMAGE="$1"
 OUTPUT_DIR="$2"
+REPLACE="false"
+
+if [ "$#" -eq 3 ]; then
+    if [ "$3" = "--replace" ]; then
+        REPLACE="true"
+    else
+        echo "Unknown flag: $3"
+        echo "Usage: $0 <container-image> <output-dir> [--replace]"
+        exit 1
+    fi
+fi
 
 # Verify that the output directory exists and is empty
 if [ -d "$OUTPUT_DIR" ]; then
     if [ -n "$(ls -A "$OUTPUT_DIR")" ]; then
-        echo "Output directory '$OUTPUT_DIR' is not empty"
-        exit 1
+        if [ "$REPLACE" = "true" ]; then
+            echo "Replacing existing files in '$OUTPUT_DIR'"
+            rm -rf "$OUTPUT_DIR/*"
+        else
+            echo "Output directory '$OUTPUT_DIR' is not empty"
+            echo "Use the --replace flag to overwrite existing files."
+            echo "Usage: $0 <container-image> <output-dir> [--replace]" 
+            exit 1
+        fi
     fi
 else
     mkdir -p "$OUTPUT_DIR"
@@ -57,7 +75,7 @@ chmod o+r "$OUTPUT_DIR/initramfs-$KVER.img"
 cp "$MNAME/boot/vmlinuz-$KVER" "$OUTPUT_DIR"
 
 # Create squashfs
-mksquashfs "$MNAME" "$OUTPUT_DIR/rootfs-$KVER.squashfs" -noappend -no-progress -no-exports -comp lzo -b 512K -Xdict-size 64K -no-fragments -no-xattrs
+mksquashfs "$MNAME" "$OUTPUT_DIR/rootfs-$KVER.squashfs" -noappend -no-progress -no-exports -comp lzo -b 512K -no-fragments -no-xattrs
 
-# Cleanup 
+# Cleanup
 podman image unmount "$IMAGE"

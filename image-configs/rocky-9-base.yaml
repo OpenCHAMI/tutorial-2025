@@ -4,7 +4,7 @@ options:
   publish_tags: '9'
   pkg_manager: 'dnf'
   parent: 'scratch'
-  publish_registry: 'localhost:5000'
+  publish_registry: 'host.containers.internal:5000'
   registry_opts_push:
     - '--tls-verify=false'
 

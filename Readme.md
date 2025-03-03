@@ -31,7 +31,6 @@ This repository walks a user through setting up an EC2 instance to test the Open
        - usermod -aG libvirt rocky
        - newgrp libvirt
      ```
-
 1. We will serve the root filesystems of our diskless nodes using nfs.  Configure NFS to serve your squashfs nfsroot with as much performance as possible.
   - Create `/opt/nfsroot` to store our images
     ```bash
@@ -45,11 +44,9 @@ This repository walks a user through setting up an EC2 instance to test the Open
     ```bash
     modprobe -r nfsd && modprobe nfsd
     ```
-
-
 1. Create the virtual node information
-  - Each node will need a dedicated MAC address that we will load into OpenCHAMI as a "discovered" node.  Since we'll probably be restarting these diskless nodes fairly regularly, we should keep a list of our mac addresses handy.  For the tutorial, we'll use MACs that have already been assigned to RedHat for QEMU so there's no chance of a collision with a real MAC.
-  ```
+   - Each node will need a dedicated MAC address that we will load into OpenCHAMI as a "discovered" node.  Since we'll probably be restarting these diskless nodes fairly regularly, we should keep a list of our mac addresses handy.  For the tutorial, we'll use MACs that have already been assigned to RedHat for QEMU so there's no chance of a collision with a real MAC.
+   ```
      52:54:00:be:ef:01
      52:54:00:be:ef:02
      52:54:00:be:ef:03
@@ -66,8 +63,7 @@ This repository walks a user through setting up an EC2 instance to test the Open
      52:54:00:be:ef:14
      52:54:00:be:ef:15
      52:54:00:be:ef:16
-  ```
-
+   ```
 1. Create the internal network for the OpenCHAMI tutorial
    ```
    cat <<EOF > openchami-net.xml
@@ -84,11 +80,9 @@ This repository walks a user through setting up an EC2 instance to test the Open
    sudo virsh net-start openchami-net
    sudo virsh net-autostart openchami-net
    ```
-
 1. Add the demo hostname to /etc/hosts so that all the certs and urls work
 
    ` echo 127.0.0.1   demo.openchami.cluster >> /etc/hosts`
-
 1. Install OpenCHAMI on the EC2 instance and familiarize yourself with the components.
   - Download the release RPM [https://github.com/OpenCHAMI/release/releases](https://github.com/OpenCHAMI/release/releases)
   `sudo systemctl list-dependencies openchami.target`
@@ -102,25 +96,42 @@ This repository walks a user through setting up an EC2 instance to test the Open
     ```
   - Use podman to pull the public root certificate from our internal ACME certificate authority
   - Use the `ochami` command to verify that unauthenticated operations are successful
-  
 1. Use the OpenCHAMI image-builder to configure a system image for the compute nodes to use.
   - Run a local container registry: `podman container run -dt -p 5000:5000 --name registry docker.io/library/registry:2`
 1. Manage system image(s) in a container registry
-  - Create a system image for the computes: `podman run --rm --device /dev/fuse --security-opt label=disable -v ${PWD}:/home/builder/:Z ghcr.io/openchami/image-build image-build --config image-configs/rocky-9-base.yaml --log-level DEBUG`
-    `podman run --rm --userns=keep-id --device /dev/fuse --security-opt label=disable -v /opt/workdir/:/home/builder/:Z ghcr.io/openchami/image-build image-build --config rocky-9-base.yaml --log-level DEBUG`
-1. Make system images from a container registry available for nfs boot
-1. Create virtual diskless compute nodes using [virsh](https://www.libvirt.org/index.html), the linux kernel virtualization toolkit
+  - Set up the working directories we'll use for images 
+  ```bash
+  sudo mkdir -p /opt/workdir && sudo mkdir /opt/nfsroot && sudo chown -R rocky:rocky /opt/workdir && cd /opt/workdir
+  ```
+  - Run a local container registry: 
+  ```bash
+  podman container run -dt -p 5000:5000 --name registry docker.io/library/registry:2
+  ```
+  - Copy the image definition from [image-configs/rocky-9-base.yaml](/image-configs/rocky-9-base.yaml) to `/opt/workdir`
 
-```bash
-sudo virt-install --name compute1 \
---memory 4096 --vcpus 1 \
---disk none \
---pxe \
---os-variant generic
---mac '52:54:00:be:ef:01'
---network network:openchami-net,model=virtio
---boot network,hd
-```
+  - Create a system image for the computes: 
+  ```bash 
+  podman run --rm --device /dev/fuse \
+  --security-opt label=disable \
+  -v ${PWD}:/data/:Z,ro ghcr.io/openchami/image-build \
+  image-build --config /data/rocky-9-base.yaml --log-level DEBUG
+  ```
+    
+1. Make system images from a container registry available for nfs boot
+   ```bash
+   ./scripts/import_image.sh localhost:5000/rocky9-base:9 /opt/nfsroot/rocky-9-base/
+   ```
+1. Create virtual diskless compute nodes using [virsh](https://www.libvirt.org/index.html), the linux kernel virtualization toolkit
+   ```bash
+   sudo virt-install --name compute1 \
+   --memory 4096 --vcpus 1 \
+   --disk none \
+   --pxe \
+   --os-variant generic
+   --mac '52:54:00:be:ef:01'
+   --network network:openchami-net,model=virtio
+   --boot network,hd
+   ```
 1. Use the OpenCHAMI API to control the node identity and boot configuration of the diskless nodes
 1. Add OpenHPC to the cluster and set up slurm for a hello world job
 1. Update JWTs and rotate certs
