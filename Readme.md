@@ -52,17 +52,6 @@ This repository walks a user through setting up an EC2 instance to test the Open
      52:54:00:be:ef:03
      52:54:00:be:ef:04
      52:54:00:be:ef:05
-     52:54:00:be:ef:06
-     52:54:00:be:ef:07
-     52:54:00:be:ef:08
-     52:54:00:be:ef:09
-     52:54:00:be:ef:10
-     52:54:00:be:ef:11
-     52:54:00:be:ef:12
-     52:54:00:be:ef:13
-     52:54:00:be:ef:14
-     52:54:00:be:ef:15
-     52:54:00:be:ef:16
    ```
 1. Create the internal network for the OpenCHAMI tutorial
    ```
@@ -135,6 +124,21 @@ This repository walks a user through setting up an EC2 instance to test the Open
 1. Use the OpenCHAMI API to control the node identity and boot configuration of the diskless nodes
 1. Add OpenHPC to the cluster and set up slurm for a hello world job
 1. Update JWTs and rotate certs
+
+# Use cases
+
+1. Use `ochami` and a fake-discovery file to create nodes in smd and then get information about them through the cli.
+   - [ ] Document the fake-discovery file format and link to this tutorial
+   - [ ] Document how this is different with Magellan
+2. Use `ochami` to update group membership for nodes and set up bss parameters per group and then lookup boot characteristics of individual nodes.
+   - [ ] BSS may not currently support boot parameters per group.  We need to check and possibly update.  See [BSS Issue #50](https://github.com/OpenCHAMI/bss/issues/50)
+   - [ ] Without a BSS that understands groups, we may need to show through scripting how to get the MACs for all nodes in a group and set the boot information directly on each.
+   - [ ] Confirm that ochami command can support the bss group functionality once bss is fixed
+3. Use `ochami` to set cloud-init info for a group and use impersonation to confirm it at the node level.
+   - [ ] Create example cloud-config files for students to use. (in this repo?)
+4. Students should be able to configure three nodes as front-end, compute, and io with different configurations via groups
+5. Students should be able to create a new kubernetes image and switch from slurm to kubernetes via reboot of a node
+
 
 # Configuration
 
@@ -216,11 +220,8 @@ Troubleshooting can be a challenge.  Here are some commands that allow you to re
 
 # TODO
 
-- [ ] Add TPMs to the libvirt VMs for demonstration of TPM attestation
-- [ ] Add tooling to control libvirt nodes with virtual bmcs
-- [ ] Add `ochami` commands to create the virtual nodes before attempting to boot them
 - [ ] Add `ochami` commands to create groups and add virtual nodes to groups
 - [ ] Add `ochami` commands to configure boot using image, kernel, and cloud-init for each group of nodes
-- [ ] Add `ochami` commands to switch from rocky 9 to rocky 8 on a subset of the compute nodes
+- [ ] Add `ochami` commands to switch from rocky 9 to rocky 8 on a subset of the compute nodes (Kubernetes?)
 - [ ] Create a dedicated md file that covers ACME certificate rotation in the context of OpenCHAMI.  Show how to set up cron to do daily rotation
 - [ ] Create a dedicated md file that describes the authentication flow and how to connect an OpenCHAMI instance to github/gitlab for users
