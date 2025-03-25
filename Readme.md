@@ -7,30 +7,32 @@ This repository walks a user through setting up an EC2 instance to test the Open
     - Use a launch template that allows you to preload some packages we'll need
     - **user-data:**
       ```
-       #cloud-config
-       repo_update: true
-       repo_upgrade: all
+      #cloud-config
 
-       packages:
-       - libvirt
-       - qemu-kvm
-       - virt-install
-       - virt-manager 
-       - dnsmasq
-       - podman
-       - buildah
-       - git
-       - vim
-       - ansible-core
-       - openssl
-       - nfs-utils
+      packages:
+      - libvirt
+      - qemu-kvm
+      - virt-install
+      - virt-manager 
+      - dnsmasq
+      - podman
+      - buildah
+      - git
+      - vim
+      - ansible-core
+      - openssl
+      - nfs-utils
 
-       runcmd:
-       - systemctl enable --now libvirtd
-       - systemctl start libvirtd
-       - usermod -aG libvirt rocky
-       - newgrp libvirt
-     ```
+      runcmd:
+      - systemctl enable --now libvirtd
+      - systemctl start libvirtd
+      - usermod -aG libvirt rocky
+      - newgrp libvirt
+      - sudo growpart /dev/xvda 4
+      - sudo pvresize /dev/xvda4
+      - sudo lvextend -l +100%FREE /dev/rocky/lvroot
+      - sudo xfs_growfs /
+      ```
 1. We will serve the root filesystems of our diskless nodes using nfs.  Configure NFS to serve your squashfs nfsroot with as much performance as possible.
   - Create `/opt/nfsroot` to store our images
     ```bash
@@ -71,10 +73,10 @@ This repository walks a user through setting up an EC2 instance to test the Open
    ```
 1. Add the demo hostname to /etc/hosts so that all the certs and urls work
 
-   ` echo 127.0.0.1   demo.openchami.cluster >> /etc/hosts`
+   `echo "127.0.0.1 demo.openchami.cluster" | sudo tee -a /etc/hosts > /dev/null`
 1. Install OpenCHAMI on the EC2 instance and familiarize yourself with the components.
   - Download the release RPM [https://github.com/OpenCHAMI/release/releases](https://github.com/OpenCHAMI/release/releases)
-  `sudo systemctl list-dependencies openchami.target`
+  - `sudo systemctl list-dependencies openchami.target`
   - Download the client rpm [https://github.com/OpenCHAMI/ochami/releases](https://github.com/OpenCHAMI/ochami/releases)
   - Install the RPMs and verify all services are running
     ```bash
@@ -96,14 +98,14 @@ This repository walks a user through setting up an EC2 instance to test the Open
   ```bash
   podman container run -dt -p 5000:5000 --name registry docker.io/library/registry:2
   ```
-  - Copy the image definition from [image-configs/rocky-9-base.yaml](/image-configs/rocky-9-base.yaml) to `/opt/workdir`
+  - Copy the image definition from [image-configs/rocky-9-base.yaml](/image-configs/rocky-9-base.yaml) to `/opt/workdir/rocky9-base.yaml`
 
   - Create a system image for the computes: 
   ```bash 
   podman run --rm --device /dev/fuse \
   --security-opt label=disable \
   -v ${PWD}:/data/:Z,ro ghcr.io/openchami/image-build \
-  image-build --config /data/rocky-9-base.yaml --log-level DEBUG
+  image-build --config /data/rocky9-base.yaml --log-level DEBUG
   ```
     
 1. Make system images from a container registry available for nfs boot
