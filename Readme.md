@@ -2,50 +2,9 @@
 
 This repository walks a user through setting up an EC2 instance to test the OpenCHAMI software.
 
-1. Start and access an EC2 instance (or access one that has been provisioned for you)
-    - Use a cheap(er) aarch instance
-    - Use a launch template that allows you to preload some packages we'll need
-    - **user-data:**
-      ```
-      #cloud-config
+See [AWS_Environment.md](/AWS_Environment.md) for setting up your own AWS environment if one is not provided for you in the tutorial.
 
-      packages:
-      - libvirt
-      - qemu-kvm
-      - virt-install
-      - virt-manager 
-      - dnsmasq
-      - podman
-      - buildah
-      - git
-      - vim
-      - ansible-core
-      - openssl
-      - nfs-utils
-
-      runcmd:
-      - systemctl enable --now libvirtd
-      - systemctl start libvirtd
-      - usermod -aG libvirt rocky
-      - newgrp libvirt
-      - sudo growpart /dev/xvda 4
-      - sudo pvresize /dev/xvda4
-      - sudo lvextend -l +100%FREE /dev/rocky/lvroot
-      - sudo xfs_growfs /
-      ```
-1. We will serve the root filesystems of our diskless nodes using nfs.  Configure NFS to serve your squashfs nfsroot with as much performance as possible.
-  - Create `/opt/nfsroot` to store our images
-    ```bash
-    sudo mkdir /opt/nfsroot && sudo chown rocky /opt/nfsroot
-    ```
-  - Create `/etc/exports` with the following contents to export the `/opt/nfsroot` directory for use by our compute nodes
-    ```bash
-    /opt/nfsroot *(ro,no_root_squash,no_subtree_check,noatime,async,fsid=0)
-    ```
-  - Reload the nfs daemon
-    ```bash
-    modprobe -r nfsd && modprobe nfsd
-    ```
+See [Instance_Preparation.md](/Instance_Preparation.md) for the manual steps to prepare a node to be an OpenCHAMI head node.
 1. Create the virtual node information
    - Each node will need a dedicated MAC address that we will load into OpenCHAMI as a "discovered" node.  Since we'll probably be restarting these diskless nodes fairly regularly, we should keep a list of our mac addresses handy.  For the tutorial, we'll use MACs that have already been assigned to RedHat for QEMU so there's no chance of a collision with a real MAC.
    ```
@@ -71,35 +30,13 @@ This repository walks a user through setting up an EC2 instance to test the Open
    sudo virsh net-start openchami-net
    sudo virsh net-autostart openchami-net
    ```
-1. Add the demo hostname to /etc/hosts so that all the certs and urls work
 
-   `echo "127.0.0.1 demo.openchami.cluster" | sudo tee -a /etc/hosts > /dev/null`
-1. Install OpenCHAMI on the EC2 instance and familiarize yourself with the components.
-  - Download the release RPM [https://github.com/OpenCHAMI/release/releases](https://github.com/OpenCHAMI/release/releases)
-  - `sudo systemctl list-dependencies openchami.target`
-  - Download the client rpm [https://github.com/OpenCHAMI/ochami/releases](https://github.com/OpenCHAMI/ochami/releases)
-  - Install the RPMs and verify all services are running
-    ```bash
-    curl -fsSL https://gist.githubusercontent.com/alexlovelltroy/96bfc8bb6f59c0845617a0dc659871de/raw | bash
-    sudo systemctl start openchami.target
-    sudo systemctl list-dependencies openchami.target
 
-    ```
   - Use podman to pull the public root certificate from our internal ACME certificate authority
   - Use the `ochami` command to verify that unauthenticated operations are successful
 1. Use the OpenCHAMI image-builder to configure a system image for the compute nodes to use.
   - Run a local container registry: `podman container run -dt -p 5000:5000 --name registry docker.io/library/registry:2`
-1. Manage system image(s) in a container registry
-  - Set up the working directories we'll use for images 
-  ```bash
-  sudo mkdir -p /opt/workdir && sudo mkdir /opt/nfsroot && sudo chown -R rocky:rocky /opt/workdir && cd /opt/workdir
-  ```
-  - Run a local container registry: 
-  ```bash
-  podman container run -dt -p 5000:5000 --name registry docker.io/library/registry:2
-  ```
   - Copy the image definition from [image-configs/rocky-9-base.yaml](/image-configs/rocky-9-base.yaml) to `/opt/workdir/rocky9-base.yaml`
-
   - Create a system image for the computes: 
   ```bash 
   podman run --rm --device /dev/fuse \
