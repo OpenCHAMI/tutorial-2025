@@ -67,16 +67,17 @@ import_image() {
     fi
 
     # Flag to detect if we're already in the unshare environment
-if [ "${PODMAN_UNSHARE:-}" != "1" ]; then
+    if [ "${PODMAN_UNSHARE:-}" != "1" ]; then
     # Check if unshare is necessary
-    if ! podman image mount busybox &>/dev/null; then
-        echo "Entering podman unshare environment..."
-        export PODMAN_UNSHARE=1
-        exec podman unshare bash "$0" "$@"
-    else
-        podman image unmount busybox &>/dev/null
+        if ! podman image mount busybox &>/dev/null; then
+            echo "Entering podman unshare environment..."
+            echo "Executing podman unshare bash $0 $@"
+            export PODMAN_UNSHARE=1
+            exec podman unshare bash "$0" "$@"
+        else
+            podman image unmount busybox &>/dev/null
+        fi
     fi
-fi
 
     # Always unmount image on exit
     cleanup() {
@@ -129,13 +130,17 @@ fi
 
     # Create SquashFS
     echo "Creating SquashFS image..."
-    mksquashfs "$mname" "$output_dir/rootfs-$kver.squashfs" -noappend -no-progress -no-exports -comp lzo -b 512K -Xdict-size 64K -no-fragments -no-xattrs || {
+    mksquashfs "$mname" "$output_dir/rootfs-$kver.squashfs" -noappend -no-progress -no-exports -comp lzo -b 512K -no-fragments -no-xattrs || {
         echo "ERROR: SquashFS creation failed."
         return 1
     }
 
     echo "✅ Successfully created SquashFS image at '$output_dir/rootfs-$kver.squashfs'"
     return 0
+}
+
+retrieve_ca_certificate() {
+    ${CONTAINER_CMD:-podman} exec -it step-ca cat /home/step/certs/root_ca.crt
 }
 
 
