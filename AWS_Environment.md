@@ -46,8 +46,8 @@ Just like OpenCHAMI, AWS provides teh ability to inject cloud-config data at run
       runcmd:
       - systemctl enable --now libvirtd
       - systemctl start libvirtd
-      - usermod -aG libvirt rocky
       - newgrp libvirt
+      - usermod -aG libvirt rocky
       - sudo growpart /dev/xvda 4
       - sudo pvresize /dev/xvda4
       - sudo lvextend -l +100%FREE /dev/rocky/lvroot

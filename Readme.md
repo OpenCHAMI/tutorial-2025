@@ -5,6 +5,7 @@ This repository walks a user through setting up an EC2 instance to test the Open
 See [AWS_Environment.md](/AWS_Environment.md) for setting up your own AWS environment if one is not provided for you in the tutorial.
 
 See [Instance_Preparation.md](/Instance_Preparation.md) for the manual steps to prepare a node to be an OpenCHAMI head node.
+
 1. Create the virtual node information
    - Each node will need a dedicated MAC address that we will load into OpenCHAMI as a "discovered" node.  Since we'll probably be restarting these diskless nodes fairly regularly, we should keep a list of our mac addresses handy.  For the tutorial, we'll use MACs that have already been assigned to RedHat for QEMU so there's no chance of a collision with a real MAC.
    ```
@@ -13,22 +14,6 @@ See [Instance_Preparation.md](/Instance_Preparation.md) for the manual steps to 
      52:54:00:be:ef:03
      52:54:00:be:ef:04
      52:54:00:be:ef:05
-   ```
-1. Create the internal network for the OpenCHAMI tutorial
-   ```
-   cat <<EOF > openchami-net.xml
-   <network>
-     <name>openchami-net</name>
-     <bridge name="virbr-openchami" />
-     <forward mode='nat'/>
-      <ip address="172.16.0.1" netmask="255.255.255.0">
-      </ip>
-   </network>
-   EOF
-
-   sudo virsh net-define openchami-net.xml
-   sudo virsh net-start openchami-net
-   sudo virsh net-autostart openchami-net
    ```
 
 
@@ -55,10 +40,10 @@ See [Instance_Preparation.md](/Instance_Preparation.md) for the manual steps to 
    --memory 4096 --vcpus 1 \
    --disk none \
    --pxe \
-   --os-variant generic
-   --mac '52:54:00:be:ef:01'
-   --network network:openchami-net,model=virtio
-   --boot network,hd
+   --os-variant generic \
+   --mac '52:54:00:be:ef:01' \
+   --network network:openchami-net,model=virtio \
+   --boot network,hd \
    ```
 1. Use the OpenCHAMI API to control the node identity and boot configuration of the diskless nodes
 1. Add OpenHPC to the cluster and set up slurm for a hello world job
