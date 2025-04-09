@@ -44,7 +44,7 @@ packages:
 - nfs-utils
 
 runcmd:
-- systemctl enable --now libvirtd
+- systemctl enable libvirtd
 - systemctl start libvirtd
 - usermod -aG libvirt rocky
 - newgrp libvirt
