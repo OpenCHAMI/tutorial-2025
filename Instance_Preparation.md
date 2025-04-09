@@ -18,7 +18,7 @@ Once your AMI has launched as an instance, it will use the cloud-int process to 
 
   - Reload the nfs daemon
     ```bash
-    modprobe -r nfsd && modprobe nfsd
+    modprobe -r nfsd && sudo modprobe nfsd
     ```
 
 ## Update /etc/hosts 
