@@ -25,31 +25,31 @@ AWS offers the ability to stand up multiple instances based on the same template
 
 Just like OpenCHAMI, AWS provides teh ability to inject cloud-config data at runtime.  In the "Advanced details" section of the template or instance definition, you will find a text box for `User data`.  This is what we're using for the tutorial:
 
-    - **user-data:**
-      ```
-      #cloud-config
+**user-data:**
+```
+#cloud-config
 
-      packages:
-      - libvirt
-      - qemu-kvm
-      - virt-install
-      - virt-manager 
-      - dnsmasq
-      - podman
-      - buildah
-      - git
-      - vim
-      - ansible-core
-      - openssl
-      - nfs-utils
+packages:
+- libvirt
+- qemu-kvm
+- virt-install
+- virt-manager 
+- dnsmasq
+- podman
+- buildah
+- git
+- vim
+- ansible-core
+- openssl
+- nfs-utils
 
-      runcmd:
-      - systemctl enable --now libvirtd
-      - systemctl start libvirtd
-      - usermod -aG libvirt rocky
-      - newgrp libvirt
-      - sudo growpart /dev/xvda 4
-      - sudo pvresize /dev/xvda4
-      - sudo lvextend -l +100%FREE /dev/rocky/lvroot
-      - sudo xfs_growfs /
-      ```
+runcmd:
+- systemctl enable --now libvirtd
+- systemctl start libvirtd
+- usermod -aG libvirt rocky
+- newgrp libvirt
+- sudo growpart /dev/xvda 4
+- sudo pvresize /dev/xvda4
+- sudo lvextend -l +100%FREE /dev/rocky/lvroot
+- sudo xfs_growfs /
+```
