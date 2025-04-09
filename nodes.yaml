@@ -1,0 +1,56 @@
+nodes:
+- name: compute1
+  nid: 1
+  xname: x1000c0s0b0n0
+  bmc_mac: de:ca:fc:0f:fe:e1
+  bmc_ip: 172.16.0.101
+  group: compute
+  interfaces:
+  - mac_addr: 52:54:00:be:ef:01
+    ip_addrs:
+    - name: management
+      ip_addr: 172.16.0.1
+- name: compute2
+  nid: 2
+  xname: x1000c0s0b1n0
+  bmc_mac: de:ca:fc:0f:fe:e2
+  bmc_ip: 172.16.0.102
+  group: compute
+  interfaces:
+  - mac_addr: 52:54:00:be:ef:02
+    ip_addrs:
+    - name: management
+      ip_addr: 172.16.0.2
+- name: compute3
+  nid: 3
+  xname: x1000c0s0b2n0
+  bmc_mac: de:ca:fc:0f:fe:e3
+  bmc_ip: 172.16.0.103
+  group: compute
+  interfaces:
+  - mac_addr: 52:54:00:be:ef:03
+    ip_addrs:
+    - name: management
+      ip_addr: 172.16.0.3
+- name: compute4
+  nid: 4
+  xname: x1000c0s0b3n0
+  bmc_mac: de:ca:fc:0f:fe:e4
+  bmc_ip: 172.16.0.104
+  group: compute
+  interfaces:
+  - mac_addr: 52:54:00:be:ef:04
+    ip_addrs:
+    - name: management
+      ip_addr: 172.16.0.4
+- name: compute5
+  nid: 5
+  xname: x1000c0s0b4n0
+  bmc_mac: de:ca:fc:0f:fe:e5
+  bmc_ip: 172.16.0.105
+  group: compute
+  interfaces:
+  - mac_addr: 52:54:00:be:ef:05
+    ip_addrs:
+    - name: management
+      ip_addr: 172.16.0.5
