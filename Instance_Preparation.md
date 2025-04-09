@@ -81,6 +81,15 @@ sudo systemctl start openchami.target
 systemctl list-dependencies openchami.target
 ```
 
+### Trust Root CA Certificate
+
+When the OpenCHAMI services started for the first time, a root CA certificate was generated in order to support TLS on the haproxy gateway. We need to add this certificate to the trusted anchors:
+
+```
+sudo podman exec -it step-ca step ca root | sudo tee /etc/pki/ca-trust/source/anchors/ochami.pem
+sudo update-ca-trust
+```
+
 ## Install and Configure OpenCHAMI Client
 
 The [`ochami` CLI](https://github.com/OpenCHAMI/ochami) provides us an easy way to interact with the OpenCHAMI services.
@@ -121,7 +130,7 @@ Build User: runner
 To configure `ochami` to be able to communicate with our cluster, we need to create a config file. We can create one in one fell swoop with:
 
 ```bash
-ochami config cluster set --user --default demo https://demo.openchami.cluster:8443
+ochami config cluster set --user --default demo cluster.uri https://demo.openchami.cluster:8443
 ```
 
 This will create a config file at `~/.config/ochami/config.yaml`. We can check that `ochami` is reading it properly with:
