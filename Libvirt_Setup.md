@@ -17,7 +17,7 @@ cat <<EOF > openchami-net.xml
   <name>openchami-net</name>
   <bridge name="virbr-openchami" />
   <forward mode='nat'/>
-  <ip address="172.16.0.1" netmask="255.255.255.0" />
+  <ip address="172.16.0.254" netmask="255.255.255.0" />
 </network>
 EOF
 
