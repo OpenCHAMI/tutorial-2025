@@ -86,7 +86,7 @@ systemctl list-dependencies openchami.target
 When the OpenCHAMI services started for the first time, a root CA certificate was generated in order to support TLS on the haproxy gateway. We need to add this certificate to the trusted anchors:
 
 ```
-sudo podman exec -it step-ca step ca root | sudo tee /etc/pki/ca-trust/source/anchors/ochami.pem
+sudo podman run --rm --network openchami-cert-internal docker.io/curlimages/curl -sk https://step-ca:9000/roots.pem | sudo tee /etc/pki/ca-trust/source/anchors/ochami.pem
 sudo update-ca-trust
 ```
 
