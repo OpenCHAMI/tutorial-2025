@@ -78,7 +78,7 @@ Even though OpenCHAMI runs as a collection of containers, the podman integration
 
 ```bash
 sudo systemctl start openchami.target
-sudo systemctl list-dependencies openchami.target
+systemctl list-dependencies openchami.target
 ```
 
 ## Install and Configure OpenCHAMI Client
