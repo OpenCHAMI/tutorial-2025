@@ -8,7 +8,7 @@
   - [Dynamic Discovery Overview](#dynamic-discovery-overview)
   - [Static Discovery Overview](#static-discovery-overview)
 - [Anatomy of a Static Discovery File](#anatomy-of-a-static-discovery-file)
-- [Configuring the `ochami` CLI](#configuring-the-ochami-cli)
+- [Using Static Discovery to Populate SMD](#using-static-discovery-to-populate-smd)
 
 # Introduction
 
@@ -71,28 +71,21 @@ Then, the **interfaces** is a list of network interfaces attached to the node. E
   - **name:** A human-readable name for this IP address for this interface.
   - **ip_addr:** An IP address for this interface.
 
-# Configuring the `ochami` CLI
+# Using Static Discovery to Populate SMD
 
-`ochami` needs to know how to communicate with the OpenCHAMI services. We've deployed these services behind a single API gateway, which makes configuration easy. All we need to do is tell `ochami` the base URI of this gateway.
-
-Let's define a cluster called "demo" and set it as the default cluster (since `ochami` supports communicating with multiple):
-
-```
-ochami config cluster set -d demo cluster.uri https://demo.openchami.cluster:8443
-```
-
-This creates `~/.config/ochami/config.yaml`. You can check that file, or run the following command to view the current configuration that `ochami` sees:
-
-```
-ochami config show
-```
-
-The output should be:
+We need a file containing the node information that we can pass to `ochami` to have it populate SMD. Take a look at `nodes.yaml`. Here's an excerpt:
 
 ```yaml
-clusters:
-    - cluster:
-        uri: https://demo.openchami.cluster:8443
-      name: demo
-default-cluster: demo
+nodes:
+- name: compute1
+  nid: 1
+  xname: x1000c0s0b0n0
+  bmc_mac: de:ca:fc:0f:fe:e1
+  bmc_ip: 172.16.0.101
+  group: compute
+  interfaces:
+  - mac_addr: 52:54:00:be:ef:01
+    ip_addrs:
+    - name: management
+      ip_addr: 172.16.0.1
 ```
