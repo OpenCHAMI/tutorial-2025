@@ -90,6 +90,48 @@ sudo podman run --rm --network openchami-cert-internal docker.io/curlimages/curl
 sudo update-ca-trust
 ```
 
+### Autorenewal of Certificates
+
+By default, the TLS certificate expires after 24 hours, so we need to set up a renewal mechanism. One way to do that is with a Systemd timer. Create the following Systemd unit files:
+
+**/etc/systemd/system/ochami-cert-renewal.timer:**
+
+```systemd
+[Unit]
+Description=Renew OpenCHAMI certificates daily
+
+[Timer]
+OnBootSec=30sec
+OnUnitActiveSec=1d
+
+[Install]
+WantedBy=timers.target
+```
+
+**/etc/systemd/system/ochami-cert-renewal.service:**
+
+```systemd
+[Unit]
+Description=Renew OpenCHAMI certificates
+
+[Service]
+Type=oneshot
+ExecStart=systemctl restart acme-deploy
+ExecStart=systemctl restart acme-register
+ExecStart=systemctl restart haproxy
+StandardOutput=journal
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Then, reload Systemd and run the service file once to make sure renewal works:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl start ochami-cert-renewal
+```
+
 ## Install and Configure OpenCHAMI Client
 
 The [`ochami` CLI](https://github.com/OpenCHAMI/ochami) provides us an easy way to interact with the OpenCHAMI services.
@@ -165,3 +207,62 @@ We should get:
 ```
 
 Voilà!
+
+## Generating Authentication Token
+
+In order to interact with protected endpoints, we will need to generate a JSON Web Token (JWT, pronounced _jot_). `ochami` reads an environment variable named `<CLUSTER_NAME>_ACCESS_TOKEN` where `<CLUSTER_NAME>` is the configured name of the cluster in all capitals, `DEMO` in our case.
+
+We don't have an identity provider set up, so we need to set up functionality to generate a token for us. We can do this by defining some shell functions.
+
+Place the following content into `/etc/profile.d/ochami.sh`:
+
+```bash
+container_curl() {
+    local url=$1
+    ${CONTAINER_CMD:-docker} run -it --rm "${CURL_CONTAINER}:${CURL_TAG}" -s $url
+}
+
+create_client_credentials() {
+   ${CONTAINER_CMD:-docker} exec hydra hydra create client \
+    --endpoint http://hydra:4445/ \
+    --format json \
+    --grant-type client_credentials \
+    --scope openid \
+    --scope smd.read
+}
+
+retrieve_access_token() {
+    local CLIENT_ID=$1
+    local CLIENT_SECRET=$2
+
+    ${CONTAINER_CMD:-docker} run --http-proxy=false --rm --network ochami-jwt-internal "${CURL_CONTAINER}:${CURL_TAG}" curl -s -u "$CLIENT_ID:$CLIENT_SECRET" \
+    -d grant_type=client_credentials \
+    -d scope=openid+smd.read \
+    http://hydra:4444/oauth2/token
+}
+
+gen_access_token() {
+    local CLIENT_CREDENTIALS
+    CLIENT_CREDENTIALS=$(create_client_credentials)
+    local CLIENT_ID=`echo $CLIENT_CREDENTIALS | jq -r '.client_id'`
+    local CLIENT_SECRET=`echo $CLIENT_CREDENTIALS | jq -r '.client_secret'`
+    local ACCESS_TOKEN=$(retrieve_access_token $CLIENT_ID $CLIENT_SECRET | jq -r .access_token)
+    echo $ACCESS_TOKEN
+}
+```
+
+Then, source it to get access to the functions:
+
+```bash
+source /etc/profile.d/ochami.sh
+```
+
+Now, we can generate a JWT and set the environment variable:
+
+```bash
+export DEMO_ACCESS_TOKEN=$(sudo bash -lc 'gen_access_token')
+```
+
+Note that `sudo` is needed because the containers are running as root and so if `sudo` is omitted, the containers will not be found.
+
+OpenCHAMI tokens last for an hour by default. Whenever one needs to be regenerated, run the above command.
