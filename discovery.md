@@ -89,3 +89,9 @@ nodes:
     - name: management
       ip_addr: 172.16.0.1
 ```
+
+Run the following to populate SMD with the node information (make sure `DEMO_ACCESS_TOKEN` is set):
+
+```bash
+ochami discover static -f yaml -d @nodes.yaml
+```
