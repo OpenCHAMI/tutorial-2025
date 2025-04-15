@@ -90,8 +90,16 @@ nodes:
       ip_addr: 172.16.0.1
 ```
 
+Create a directory for putting our cluster configuration data into and copy this file there:
+
+```bash
+mkdir -p /opt/workdir/nodes
+cd /opt/workdir
+vi nodes/nodes.yaml
+```
+
 Run the following to populate SMD with the node information (make sure `DEMO_ACCESS_TOKEN` is set):
 
 ```bash
-ochami discover static -f yaml -d @nodes.yaml
+ochami discover static -f yaml -d @/opt/workdir/nodes/nodes.yaml
 ```
