@@ -37,14 +37,14 @@ See [Instance_Preparation.md](/Instance_Preparation.md) for the manual steps to 
 1. Use the OpenCHAMI image-builder to configure a system image for the compute nodes to use.
   - Run a local container registry: `podman container run -dt -p 5000:5000 --name registry docker.io/library/registry:2`
   - Copy the image definition from [image-configs/rocky-9-base.yaml](/image-configs/rocky-9-base.yaml) to `/opt/workdir/rocky9-base.yaml`
-  - Create a system image for the computes: 
-  ```bash 
+  - Create a system image for the computes:
+  ```bash
   podman run --rm --device /dev/fuse \
   --security-opt label=disable \
   -v ${PWD}:/data/:Z,ro ghcr.io/openchami/image-build \
   image-build --config /data/rocky9-base.yaml --log-level DEBUG
   ```
-    
+
 1. Make system images from a container registry available for nfs boot
    ```bash
    ./scripts/import_image.sh localhost:5000/rocky9-base:9 /opt/nfsroot/rocky-9-base/
