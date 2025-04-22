@@ -94,12 +94,57 @@ Create a directory for putting our cluster configuration data into and copy this
 
 ```bash
 mkdir -p /opt/workdir/nodes
-cd /opt/workdir
-vi nodes/nodes.yaml
+vim /opt/workdir/nodes/nodes.yaml
 ```
 
 Run the following to populate SMD with the node information (make sure `DEMO_ACCESS_TOKEN` is set):
 
 ```bash
 ochami discover static -f yaml -d @/opt/workdir/nodes/nodes.yaml
+```
+
+We can check SMD that the components got added with:
+
+```bash
+ochami smd component get | jq '.Components[] | select(.Type == "Node")'
+```
+
+The output should be:
+
+```json
+{
+  "Enabled": true,
+  "ID": "x1000c0s0b0n0",
+  "NID": 1,
+  "Role": "Compute",
+  "Type": "Node"
+}
+{
+  "Enabled": true,
+  "ID": "x1000c0s0b1n0",
+  "NID": 2,
+  "Role": "Compute",
+  "Type": "Node"
+}
+{
+  "Enabled": true,
+  "ID": "x1000c0s0b2n0",
+  "NID": 3,
+  "Role": "Compute",
+  "Type": "Node"
+}
+{
+  "Enabled": true,
+  "ID": "x1000c0s0b3n0",
+  "NID": 4,
+  "Role": "Compute",
+  "Type": "Node"
+}
+{
+  "Enabled": true,
+  "ID": "x1000c0s0b4n0",
+  "NID": 5,
+  "Role": "Compute",
+  "Type": "Node"
+}
 ```
