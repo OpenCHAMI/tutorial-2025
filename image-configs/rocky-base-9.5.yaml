@@ -1,42 +1,42 @@
 options:
   layer_type: 'base'
-  name: 'rocky9-base'
-  publish_tags: '9'
+  name: 'rocky-base'
+  publish_tags: '9.5'
   pkg_manager: 'dnf'
   parent: 'scratch'
-  publish_registry: 'host.containers.internal:5000'
+  publish_registry: 'demo.openchami.cluster:5000/openchami'
   registry_opts_push:
     - '--tls-verify=false'
 
 repos:
-  - alias: 'Rock_BaseOS'
-    url: 'https://download.rockylinux.org/pub/rocky/9/BaseOS/x86_64/os/'
+  - alias: 'Rocky_9_BaseOS'
+    url: 'https://dl.rockylinux.org/pub/rocky/9.5/BaseOS/x86_64/os/'
     gpg: 'https://dl.rockylinux.org/pub/rocky/RPM-GPG-KEY-Rocky-9'
-  - alias: 'Rock_AppStream'
-    url: 'https://download.rockylinux.org/pub/rocky/9/AppStream/x86_64/os/'
+  - alias: 'Rocky_9_AppStream'
+    url: 'https://dl.rockylinux.org/pub/rocky/9.5/AppStream/x86_64/os/'
     gpg: 'https://dl.rockylinux.org/pub/rocky/RPM-GPG-KEY-Rocky-9'
-  - alias: 'Epel'
+  - alias: 'Epel9'
     url: 'https://dl.fedoraproject.org/pub/epel/9/Everything/x86_64/'
     gpg: 'https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-9'
 
-
 package_groups:
   - 'Minimal Install'
+  - 'Development Tools'
 
 packages:
-  - kernel
-  - wget
-  - dracut-live
+  - cloud-init
+  - curl
   - dmidecode
-  - tpm2-tools
+  - dracut-live
+  - jq
+  - kernel
+  - tmux
   - tpm2-abrmd
+  - tpm2-tools
   - tpm2-tss
   - vim
-  - curl
-  - tmux
-  - cloud-init
+  - wget
   - wireguard-tools
-  - jq
 
 cmds:
   - cmd: 'dracut --add "dmsquash-live livenet network-manager" --kver $(basename /lib/modules/*) -N -f --logfile /tmp/dracut.log 2>/dev/null'
