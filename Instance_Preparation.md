@@ -1,6 +1,35 @@
 # Instance Preparation
 
+## Contents
+
+- [Instance Preparation](#instance-preparation)
+  - [Contents](#contents)
+- [Introduction](#introduction)
+- [Preparation Steps](#preparation-steps)
+  - [Install Registry CLI tool](#install-registry-cli-tool)
+  - [Set Up NFS for Shared Filesystems](#set-up-nfs-for-shared-filesystems)
+  - [Update `/etc/hosts`](#update-etchosts)
+  - [Set Up Image Infrastructure](#set-up-image-infrastructure)
+    - [Directories for Image Data](#directories-for-image-data)
+    - [Local Image Registry](#local-image-registry)
+    - [Working Directory](#working-directory)
+    - [Local Image S3 Instance](#local-image-s3-instance)
+  - [Install OpenCHAMI Services](#install-openchami-services)
+    - [Install Command](#install-command)
+    - [Review Installed Containers](#review-installed-containers)
+    - [Start OpenCHAMI](#start-openchami)
+    - [Trust Root CA Certificate](#trust-root-ca-certificate)
+    - [Autorenewal of Certificates](#autorenewal-of-certificates)
+  - [Install and Configure OpenCHAMI Client](#install-and-configure-openchami-client)
+    - [Installation](#installation)
+    - [Configuration](#configuration)
+  - [Generating Authentication Token](#generating-authentication-token)
+
+# Introduction
+
 Once your AMI has launched as an instance, it will use the cloud-int process to install all the OpenCHAMI prerequisites.  This will take about five minutes depending on the status of the internal AWS network and your instance type.  Checking the process list for dnf commands is a reasonable way to ascertain if the process is complete.  You can also check the cloud-init logs in `/var/log/cloud-init`.  Errors are often logged while cloud-init continues without failure.
+
+# Preparation Steps
 
 ## Install Registry CLI tool
 
@@ -11,7 +40,7 @@ sudo curl -fSL https://github.com/regclient/regclient/releases/latest/download/r
 sudo chmod +x /usr/local/bin/regctl
 ```
 
-## Set up NFS for Shared Filesystems
+## Set Up NFS for Shared Filesystems
 
 Create `/opt/nfsroot` to store our images
 
@@ -33,12 +62,11 @@ modprobe -r nfsd
 sudo modprobe nfsd
 ```
 
-## Update /etc/hosts
+## Update `/etc/hosts`
 
-**Add the demo hostname to /etc/hosts so that all the certs and urls work**
-   ```bash
-   echo "172.16.0.253 demo.openchami.cluster" | sudo tee -a /etc/hosts > /dev/null
-   ```
+  ```bash
+  echo "172.16.0.253 demo.openchami.cluster" | sudo tee -a /etc/hosts > /dev/null
+  ```
 
 ## Set Up Image Infrastructure
 
