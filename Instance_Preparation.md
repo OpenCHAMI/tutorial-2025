@@ -2,50 +2,201 @@
 
 Once your AMI has launched as an instance, it will use the cloud-int process to install all the OpenCHAMI prerequisites.  This will take about five minutes depending on the status of the internal AWS network and your instance type.  Checking the process list for dnf commands is a reasonable way to ascertain if the process is complete.  You can also check the cloud-init logs in `/var/log/cloud-init`.  Errors are often logged while cloud-init continues without failure.
 
+## Install Registry CLI tool
+
+We will be using a registry for storing our images, and we need to be able to interact with it somehow so we will be using [`regctl`](https://github.com/regclient/regclient/tree/main/cmd/regctl).
+
+```bash
+sudo curl -fSL https://github.com/regclient/regclient/releases/latest/download/regctl-linux-amd64 -o /usr/local/bin/regctl
+sudo chmod +x /usr/local/bin/regctl
+```
+
 ## Set up NFS for filesystems
 
 **Create the directory and make sure it is properly shared.**
 
-  - Create `/opt/nfsroot` to store our images
-    ```bash
-    sudo mkdir /opt/nfsroot && sudo chown rocky /opt/nfsroot
-    ```
+- Create `/opt/nfsroot` to store our images
 
-  - Create `/etc/exports` with the following contents to export the `/opt/nfsroot` directory for use by our compute nodes
-    ```bash
-    /opt/nfsroot *(ro,no_root_squash,no_subtree_check,noatime,async,fsid=0)
-    ```
+  ```bash
+  sudo mkdir /srv/nfs
+  sudo chown rocky: /srv/nfs
+  ```
 
-  - Reload the nfs daemon
-    ```bash
-    modprobe -r nfsd && sudo modprobe nfsd
-    ```
+- Create `/etc/exports` with the following contents to export the `/srv/nfs` directory for use by our compute nodes
 
-## Update /etc/hosts 
+  ```bash
+  /srv/nfs *(ro,no_root_squash,no_subtree_check,noatime,async,fsid=0)
+  ```
+
+- Reload the nfs daemon
+
+  ```bash
+  modprobe -r nfsd
+  sudo modprobe nfsd
+  ```
+
+## Update /etc/hosts
 
 **Add the demo hostname to /etc/hosts so that all the certs and urls work**
    ```bash
-   echo "127.0.0.1 demo.openchami.cluster" | sudo tee -a /etc/hosts > /dev/null
+   echo "172.16.0.253 demo.openchami.cluster" | sudo tee -a /etc/hosts > /dev/null
    ```
 
-## Set up a local container registry and working directory for system images
+## Set Up Image Infrastructure
 
-  - Create a local directory for storing the container images
-    ```bash
-    sudo mkdir /opt/containers/ && sudo chown rocky /opt/containers/
-    ```
+### Directories for Image Data
 
-  - Start the local container registry
-    ```bash
-    podman container run -dt -p 5000:5000 -v /opt/containers:/var/lib/registry:Z --name registry docker.io/library/registry:2
-    ```
+- Create a local directory for storing the container images
 
-  - Set up the working directories we'll use for images
+  ```bash
+  sudo mkdir -p /data/oci
+  sudo chown -R rocky: /data/oci
+  ```
 
-    SELinux treats home directories specially.  To avoid cgroups conflicting with SELinux enforcement, we set up a working directory outside our home directory.
-    ```bash
-    sudo mkdir -p /opt/workdir  && sudo chown -R rocky:rocky /opt/workdir && cd /opt/workdir
-    ```
+- Create a local directory for storing SquashFS images
+
+  ```bash
+  sudo mkdir -p /data/minio
+  sudo chown -R rocky: /data/minio
+  ```
+
+### Local Image Registry
+
+This is where OCI-formatted images will live so that they can serve as parents for children image layers.
+
+- Create a quadlet for the registry at `/etc/containers/systemd/registry.container`:
+
+  ```systemd
+  [Unit]
+  Description=Image OCI Registry
+  After=network-online.target
+  Requires=network-online.target
+
+  [Container]
+  ContainerName=registry
+  HostName=registry
+  Image=docker.io/library/registry:latest
+  Volume=/data/oci:/var/lib/registry:z
+  PublishPort=5000:5000
+
+  [Service]
+  TimeoutStartSec=0
+  Restart=always
+
+  [Install]
+  WantedBy=default.target
+  ```
+
+- Start the registry:
+
+  ```bash
+  sudo systemctl daemon-reload
+  sudo systemctl start registry
+  ```
+
+- Disable TLS for registry in registry CLI:
+  ```bash
+  regctl registry set --tls disabled demo.openchami.cluster:5000
+  ```
+
+- Set up the working directories we'll use for images
+
+  SELinux treats home directories specially.  To avoid cgroups conflicting with SELinux enforcement, we set up a working directory outside our home directory.
+  ```bash
+  sudo mkdir -p /opt/workdir
+  sudo chown -R rocky: /opt/workdir
+  cd /opt/workdir
+  ```
+
+### Local Image S3 Instance
+
+Create `/etc/containers/systemd/minio.service`:
+
+```systemd
+[Unit]
+Description=Minio S3
+After=local-fs.target network-online.target
+Wants=local-fs.target network-online.target
+
+[Container]
+ContainerName=minio-server
+Image=docker.io/minio/minio:latest
+# Volumes
+Volume=/data/minio:/data
+
+# Ports
+PublishPort=172.16.0.253:9090:9000
+PublishPort=172.16.0.253:9091:9001
+
+# Environemnt Variables
+Environment=MINIO_ROOT_USER=admin
+Environment=MINIO_ROOT_PASSWORD=admin123
+
+# Command to run in container
+Exec=server /data --console-address :9001
+
+[Service]
+Restart=always
+ExecStartPost=podman exec minio-server bash -c 'until curl -sI http://localhost:9000 > /dev/null; do sleep 1; done; mc alias set local http://localhost:9000 admin admin123; mc mb local/efi; mc mb local/boot-images;mc anonymous set download local/efi;mc anonymous set download local/boot-images'
+
+[Install]
+# Start by default on boot
+WantedBy=multi-user.target default.target
+```
+
+Reload SystemD and start the service:
+
+```
+sudo systemctl daemon-reload
+sudo systemctl start minio
+```
+
+To verify it works, we should be able to cURL the base endpoint:
+
+```bash
+curl http://172.16.0.253:9090
+```
+
+and get an Access Denied:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<Error><Code>AccessDenied</Code><Message>Access Denied.</Message><Resource>/</Resource><RequestId>1838AD5A9941A638</RequestId><HostId>dd9025bab4ad464b049177c95eb6ebf374d3b3fd1af9251148b658df7ac2e3e8</HostId></Error>
+```
+
+After we've verified it works, let's enable the service:
+
+Now, we need to setup our S3 client, `s3cmd`. Create the following file:
+
+**`~/.s3cfg`**
+
+```
+# Setup endpoint
+host_base = demo.openchami.cluster:9090
+host_bucket = demo.openchami.cluster:9090
+bucket_location = us-east-1
+use_https = False
+
+# Setup access keys
+access_key = admin
+secret_key = admin123
+
+# Enable S3 v4 signature APIs
+signature_v2 = False
+```
+
+To make sure it works, list the S3 buckets:
+
+```bash
+s3cmd ls
+```
+
+We should see the two that got created:
+
+```
+2025-04-22 15:24  s3://boot-images
+2025-04-22 15:24  s3://efi
+```
 
 ## Install OpenCHAMI Services
 
@@ -155,15 +306,15 @@ ochami version
 The output should look something like:
 
 ```
-Version:    0.2.1
-Tag:        v0.2.1
+Version:    0.3.2
+Tag:        v0.3.2
 Branch:     HEAD
-Commit:     3b28490f9a9a84070533d6794a1e5442a0c43dff
+Commit:     2a165a84e0ce51c0b8c88861e95e80ca0aed009c
 Git State:  clean
-Date:       2025-04-08T18:18:34Z
+Date:       2025-04-11T01:58:14Z
 Go:         go1.24.2
 Compiler:   gc
-Build Host: fv-az1333-80
+Build Host: fv-az1112-474
 Build User: runner
 ```
 
@@ -212,52 +363,7 @@ Voilà!
 
 In order to interact with protected endpoints, we will need to generate a JSON Web Token (JWT, pronounced _jot_). `ochami` reads an environment variable named `<CLUSTER_NAME>_ACCESS_TOKEN` where `<CLUSTER_NAME>` is the configured name of the cluster in all capitals, `DEMO` in our case.
 
-We don't have an identity provider set up, so we need to set up functionality to generate a token for us. We can do this by defining some shell functions.
-
-Place the following content into `/etc/profile.d/ochami.sh`:
-
-```bash
-container_curl() {
-    local url=$1
-    ${CONTAINER_CMD:-docker} run -it --rm "${CURL_CONTAINER}:${CURL_TAG}" -s $url
-}
-
-create_client_credentials() {
-   ${CONTAINER_CMD:-docker} exec hydra hydra create client \
-    --endpoint http://hydra:4445/ \
-    --format json \
-    --grant-type client_credentials \
-    --scope openid \
-    --scope smd.read
-}
-
-retrieve_access_token() {
-    local CLIENT_ID=$1
-    local CLIENT_SECRET=$2
-
-    ${CONTAINER_CMD:-docker} run --http-proxy=false --rm --network ochami-jwt-internal "${CURL_CONTAINER}:${CURL_TAG}" curl -s -u "$CLIENT_ID:$CLIENT_SECRET" \
-    -d grant_type=client_credentials \
-    -d scope=openid+smd.read \
-    http://hydra:4444/oauth2/token
-}
-
-gen_access_token() {
-    local CLIENT_CREDENTIALS
-    CLIENT_CREDENTIALS=$(create_client_credentials)
-    local CLIENT_ID=`echo $CLIENT_CREDENTIALS | jq -r '.client_id'`
-    local CLIENT_SECRET=`echo $CLIENT_CREDENTIALS | jq -r '.client_secret'`
-    local ACCESS_TOKEN=$(retrieve_access_token $CLIENT_ID $CLIENT_SECRET | jq -r .access_token)
-    echo $ACCESS_TOKEN
-}
-```
-
-Then, source it to get access to the functions:
-
-```bash
-source /etc/profile.d/ochami.sh
-```
-
-Now, we can generate a JWT and set the environment variable:
+Since we aren't using an external identity provider, we will use OpenCHAMI's internal one to generate a token. The RPM we installed comes with some shell functions that allow us to do this.
 
 ```bash
 export DEMO_ACCESS_TOKEN=$(sudo bash -lc 'gen_access_token')
