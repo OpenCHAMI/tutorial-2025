@@ -11,29 +11,27 @@ sudo curl -fSL https://github.com/regclient/regclient/releases/latest/download/r
 sudo chmod +x /usr/local/bin/regctl
 ```
 
-## Set up NFS for filesystems
+## Set up NFS for Shared Filesystems
 
-**Create the directory and make sure it is properly shared.**
+Create `/opt/nfsroot` to store our images
 
-- Create `/opt/nfsroot` to store our images
+```bash
+sudo mkdir /srv/nfs
+sudo chown rocky: /srv/nfs
+```
 
-  ```bash
-  sudo mkdir /srv/nfs
-  sudo chown rocky: /srv/nfs
-  ```
+Create `/etc/exports` with the following contents to export the `/srv/nfs` directory for use by our compute nodes
 
-- Create `/etc/exports` with the following contents to export the `/srv/nfs` directory for use by our compute nodes
+```
+/srv/nfs *(ro,no_root_squash,no_subtree_check,noatime,async,fsid=0)
+```
 
-  ```bash
-  /srv/nfs *(ro,no_root_squash,no_subtree_check,noatime,async,fsid=0)
-  ```
+Reload the NFS daemon
 
-- Reload the nfs daemon
-
-  ```bash
-  modprobe -r nfsd
-  sudo modprobe nfsd
-  ```
+```bash
+modprobe -r nfsd
+sudo modprobe nfsd
+```
 
 ## Update /etc/hosts
 
