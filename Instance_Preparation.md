@@ -62,87 +62,28 @@ sudo modprobe nfsd
 
 This is where OCI-formatted images will live so that they can serve as parents for children image layers.
 
-- Create a quadlet for the registry at `/etc/containers/systemd/registry.container`:
+Copy the quadlet file the registry from `quadlets/registry.container` to `/etc/containers/systemd/registry.container`, then reload SystemD and start the service:
 
-  ```systemd
-  [Unit]
-  Description=Image OCI Registry
-  After=network-online.target
-  Requires=network-online.target
+```bash
+sudo systemctl daemon-reload
+sudo systemctl start registry
+```
 
-  [Container]
-  ContainerName=registry
-  HostName=registry
-  Image=docker.io/library/registry:latest
-  Volume=/data/oci:/var/lib/registry:z
-  PublishPort=5000:5000
+### Working Directory
 
-  [Service]
-  TimeoutStartSec=0
-  Restart=always
+Then, set up the working directories we'll use for images.
 
-  [Install]
-  WantedBy=default.target
-  ```
+SELinux treats home directories specially. To avoid cgroups conflicting with SELinux enforcement, we set up a working directory outside our home directory.
 
-- Start the registry:
-
-  ```bash
-  sudo systemctl daemon-reload
-  sudo systemctl start registry
-  ```
-
-- Disable TLS for registry in registry CLI:
-  ```bash
-  regctl registry set --tls disabled demo.openchami.cluster:5000
-  ```
-
-- Set up the working directories we'll use for images
-
-  SELinux treats home directories specially.  To avoid cgroups conflicting with SELinux enforcement, we set up a working directory outside our home directory.
-  ```bash
-  sudo mkdir -p /opt/workdir
-  sudo chown -R rocky: /opt/workdir
-  cd /opt/workdir
-  ```
+```bash
+sudo mkdir -p /opt/workdir
+sudo chown -R rocky: /opt/workdir
+cd /opt/workdir
+```
 
 ### Local Image S3 Instance
 
-Create `/etc/containers/systemd/minio.service`:
-
-```systemd
-[Unit]
-Description=Minio S3
-After=local-fs.target network-online.target
-Wants=local-fs.target network-online.target
-
-[Container]
-ContainerName=minio-server
-Image=docker.io/minio/minio:latest
-# Volumes
-Volume=/data/minio:/data
-
-# Ports
-PublishPort=172.16.0.253:9090:9000
-PublishPort=172.16.0.253:9091:9001
-
-# Environemnt Variables
-Environment=MINIO_ROOT_USER=admin
-Environment=MINIO_ROOT_PASSWORD=admin123
-
-# Command to run in container
-Exec=server /data --console-address :9001
-
-[Service]
-Restart=always
-ExecStartPost=podman exec minio-server bash -c 'until curl -sI http://localhost:9000 > /dev/null; do sleep 1; done; mc alias set local http://localhost:9000 admin admin123; mc mb local/efi; mc mb local/boot-images;mc anonymous set download local/efi;mc anonymous set download local/boot-images'
-
-[Install]
-# Start by default on boot
-WantedBy=multi-user.target default.target
-```
-
-Reload SystemD and start the service:
+Copy `quadlets/minio.container` to `/etc/containers/systemd/minio.container`. Then, reload SystemD and start the service:
 
 ```
 sudo systemctl daemon-reload
