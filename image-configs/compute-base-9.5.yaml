@@ -1,0 +1,46 @@
+options:
+  layer_type: 'base'
+  name: 'compute-base'
+  publish_tags:
+    - '9.5'
+  pkg_manager: 'dnf'
+  parent: 'demo.openchami.cluster:5000/openchami/rocky-base:9.5'
+  registry_opts_pull:
+    - '--tls-verify=false'
+
+  # Publish to local S3
+  publish_s3: 'http://172.16.0.253:9090'
+  s3_prefix: 'compute/base/'
+  s3_bucket: 'boot-images'
+
+  # Publish to SI registry
+  publish_registry: 'demo.openchami.cluster:5000/openchami'
+  registry_opts_push:
+    - '--tls-verify=false'
+
+repos:
+  - alias: 'Rocky_9_CRB'
+    url: 'https://dl.rockylinux.org/pub/rocky/9.5/CRB/x86_64/os/'
+    gpg: 'https://dl.rockylinux.org/pub/rocky/RPM-GPG-KEY-Rocky-9'
+
+packages:
+  - chrony
+  - cloud-init
+  - cmake3
+  - dmidecode
+  - dnf
+  - efibootmgr
+  - git
+  - ipmitool
+  - jq
+  - lua-posix
+  - make
+  - nfs-utils
+  - nss_db
+  - python3
+  - rsyslog
+  - sudo
+  - tcl
+  - tcpdump
+  - traceroute
+  - vim
