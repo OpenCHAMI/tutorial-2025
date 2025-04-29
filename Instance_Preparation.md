@@ -65,7 +65,7 @@ sudo modprobe nfsd
 ## Update `/etc/hosts`
 
   ```bash
-  echo "172.16.0.253 demo.openchami.cluster" | sudo tee -a /etc/hosts > /dev/null
+  echo "172.16.0.254 demo.openchami.cluster" | sudo tee -a /etc/hosts > /dev/null
   ```
 
 ## Set Up Image Infrastructure
@@ -121,7 +121,7 @@ sudo systemctl start minio
 To verify it works, we should be able to cURL the base endpoint:
 
 ```bash
-curl http://172.16.0.253:9090
+curl http://172.16.0.254:9090
 ```
 
 and get an Access Denied:

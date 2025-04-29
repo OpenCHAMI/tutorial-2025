@@ -16,12 +16,6 @@ cat <<EOF > openchami-net.xml
 <network>
   <name>openchami-net</name>
   <bridge name="virbr-openchami" />
-  <forward mode='nat'/>
-  <ip address="172.16.0.254" netmask="255.255.255.0" />
-  <dhcp>
-    <range start='172.16.0.1' end='172.16.0.253'/>
-    <host mac='52:54:00:be:ef:01' ip='172.16.0.253'/>
-  </dhcp>
 </network>
 EOF
 sudo virsh net-define openchami-net.xml

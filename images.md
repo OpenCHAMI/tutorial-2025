@@ -359,7 +359,7 @@ Copy `image-configs/compute-base-9.5.yaml` to the `/opt/workdir/images` director
     - '9.5'
   ```
   ```yaml
-  publish_s3: 'http://172.16.0.253:9090'
+  publish_s3: 'http://172.16.0.254:9090'
   s3_prefix: 'compute/base/'
   s3_bucket: 'boot-images'
   ```
@@ -386,8 +386,8 @@ INFO - parent : demo.openchami.cluster:5000/openchami/rocky-base:9.5
 INFO - proxy :
 INFO - name : compute-base
 INFO - publish_local : False
-INFO - publish_s3 : http://172.16.0.253:9090
-INFO - s3 endpoint : http://172.16.0.253:9090
+INFO - publish_s3 : http://172.16.0.254:9090
+INFO - s3 endpoint : http://172.16.0.254:9090
 INFO - s3_prefix : compute/base/
 INFO - s3_bucket : boot-images
 INFO - publish_registry : demo.openchami.cluster:5000/openchami

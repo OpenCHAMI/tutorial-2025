@@ -9,7 +9,7 @@ options:
     - '--tls-verify=false'
 
   # Publish to local S3
-  publish_s3: 'http://172.16.0.253:9090'
+  publish_s3: 'http://172.16.0.254:9090'
   s3_prefix: 'compute/base/'
   s3_bucket: 'boot-images'
 
