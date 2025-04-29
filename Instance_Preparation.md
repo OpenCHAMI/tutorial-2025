@@ -6,17 +6,20 @@
   - [Contents](#contents)
 - [Introduction](#introduction)
 - [Preparation Steps](#preparation-steps)
-  - [Install Registry CLI tool](#install-registry-cli-tool)
   - [Set Up NFS for Shared Filesystems](#set-up-nfs-for-shared-filesystems)
   - [Update `/etc/hosts`](#update-etchosts)
   - [Set Up Image Infrastructure](#set-up-image-infrastructure)
     - [Directories for Image Data](#directories-for-image-data)
     - [Local Image Registry](#local-image-registry)
+    - [Install Registry CLI tool](#install-registry-cli-tool)
     - [Working Directory](#working-directory)
     - [Local Image S3 Instance](#local-image-s3-instance)
+    - [Install S3 Client](#install-s3-client)
   - [Install OpenCHAMI Services](#install-openchami-services)
     - [Install Command](#install-command)
     - [Review Installed Containers](#review-installed-containers)
+    - [Configure CoreDHCP](#configure-coredhcp)
+    - [Configure Cloud-Init](#configure-cloud-init)
     - [Start OpenCHAMI](#start-openchami)
     - [Trust Root CA Certificate](#trust-root-ca-certificate)
     - [Autorenewal of Certificates](#autorenewal-of-certificates)
@@ -30,15 +33,6 @@
 Once your AMI has launched as an instance, it will use the cloud-int process to install all the OpenCHAMI prerequisites.  This will take about five minutes depending on the status of the internal AWS network and your instance type.  Checking the process list for dnf commands is a reasonable way to ascertain if the process is complete.  You can also check the cloud-init logs in `/var/log/cloud-init`.  Errors are often logged while cloud-init continues without failure.
 
 # Preparation Steps
-
-## Install Registry CLI tool
-
-We will be using a registry for storing our images, and we need to be able to interact with it somehow so we will be using [`regctl`](https://github.com/regclient/regclient/tree/main/cmd/regctl).
-
-```bash
-sudo curl -fSL https://github.com/regclient/regclient/releases/latest/download/regctl-linux-amd64 -o /usr/local/bin/regctl
-sudo chmod +x /usr/local/bin/regctl
-```
 
 ## Set Up NFS for Shared Filesystems
 
@@ -72,19 +66,19 @@ sudo modprobe nfsd
 
 ### Directories for Image Data
 
-- Create a local directory for storing the container images
+Create a local directory for storing the container images
 
-  ```bash
-  sudo mkdir -p /data/oci
-  sudo chown -R rocky: /data/oci
-  ```
+```bash
+sudo mkdir -p /data/oci
+sudo chown -R rocky: /data/oci
+```
 
-- Create a local directory for storing SquashFS images
+Create a local directory for storing SquashFS images
 
-  ```bash
-  sudo mkdir -p /data/minio
-  sudo chown -R rocky: /data/minio
-  ```
+```bash
+sudo mkdir -p /data/minio
+sudo chown -R rocky: /data/minio
+```
 
 ### Local Image Registry
 
@@ -95,6 +89,21 @@ Copy the quadlet file the registry from `quadlets/registry.container` to `/etc/c
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl start registry
+```
+
+### Install Registry CLI tool
+
+We will be using a registry for storing our images, and we need to be able to interact with it somehow so we will be using [`regctl`](https://github.com/regclient/regclient/tree/main/cmd/regctl).
+
+```bash
+sudo curl -fSL https://github.com/regclient/regclient/releases/latest/download/regctl-linux-amd64 -o /usr/local/bin/regctl
+sudo chmod +x /usr/local/bin/regctl
+```
+
+We'll need to configure the registry that we will use to not use TLS:
+
+```bash
+regctl registry set demo.openchami.cluster:5000 --tls disabled
 ```
 
 ### Working Directory
@@ -133,7 +142,15 @@ and get an Access Denied:
 
 After we've verified it works, let's enable the service:
 
-Now, we need to setup our S3 client, `s3cmd`. Create the following file:
+### Install S3 Client
+
+Now, we need to setup our S3 client, `s3cmd`. Install it:
+
+```
+sudo dnf install s3cmd
+```
+
+Then, create the following file:
 
 **`~/.s3cfg`**
 
@@ -190,6 +207,35 @@ The post-install script for the RPM pulls all the official containers from the g
 sudo podman images
 ```
 
+### Configure CoreDHCP
+
+Check which interface has the internal IP of 172.16.0.254. Open `/etc/openchami/configs/coredhcp.yaml` and replace `%virbr-openchami` in the `listen` directive with it. We will also need to change the `server_id`, `dns`, and `router` entries to be this IP, as well as the IP in the `coresmd` directive.
+
+So, if our listen interface is `enp2s0`, then our config file will look like this:
+
+```yaml
+server4:
+  listen:
+    - "%enp2s0"
+  plugins:
+    - server_id: 172.16.0.254
+    - dns: 172.16.0.254
+    - router: 172.16.0.254
+    - netmask: 255.255.255.0
+    - coresmd: https://demo.openchami.cluster:8443 http://172.16.0.254:8081 /root_ca/root_ca.crt 30s 1h false
+    - bootloop: /tmp/coredhcp.db default 5m 172.16.0.200 172.16.0.250
+```
+
+### Configure Cloud-Init
+
+We need to enable node impersonation in the cloud-init server so that we can use the `ochami` tool to view node config. To do that, edit `/etc/containers/systemd/cloud-init-server.container` and add:
+
+```systemd
+Exec=/usr/local/bin/cloud-init-server --impersonation=true
+```
+
+under the `[Container]` section.
+
 ### Start OpenCHAMI
 
 Even though OpenCHAMI runs as a collection of containers, the podman integration with systemd allows us to start, stop, and trace OpenCHAMI as a set of dependent services through the `openchami.target` unit.
@@ -219,8 +265,8 @@ By default, the TLS certificate expires after 24 hours, so we need to set up a r
 Description=Renew OpenCHAMI certificates daily
 
 [Timer]
-OnBootSec=30sec
 OnUnitActiveSec=1d
+Persistent=true
 
 [Install]
 WantedBy=timers.target
@@ -247,7 +293,24 @@ Then, reload Systemd and run the service file once to make sure renewal works:
 
 ```bash
 sudo systemctl daemon-reload
+sudo systemctl enable --now ochami-cert-renewal.timer
 sudo systemctl start ochami-cert-renewal
+```
+
+Make sure the timer shows up:
+
+```bash
+systemctl list-timers ochami-cert-renewal.timer
+```
+
+We should see:
+
+```
+NEXT                        LEFT     LAST PASSED UNIT                      ACTIVATES
+Tue 2025-04-29 09:18:51 MDT 23h left -    -      ochami-cert-renewal.timer ochami-cert-renewal.service
+
+1 timers listed.
+Pass --all to see loaded but inactive timers, too.
 ```
 
 ## Install and Configure OpenCHAMI Client
