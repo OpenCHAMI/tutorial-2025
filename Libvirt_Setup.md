@@ -25,6 +25,12 @@ sudo virsh net-autostart openchami-net
 
 ## Virtual Compute Node Startup
 
+Copy the UEFI variables from the stock one to a dedicated compute one:
+
+```bash
+sudo cp /usr/share/OVMF/OVMF_VARS.fd /var/lib/libvirt/qemu/nvram/compute.fd
+```
+
 Create virtual diskless compute nodes using [virsh](https://www.libvirt.org/index.html)
 
 ```bash
@@ -38,6 +44,8 @@ sudo virt-install \
   --network network=openchami-net,model=virtio,mac=52:54:00:be:ef:01 \
   --graphics none \
   --console pty,target_type=serial \
-  --boot network,hd \
+  --boot loader=/usr/share/OVMF/OVMF_CODE.secboot.fd,loader.readonly=yes,loader.type=pflash,nvram.template=/var/lib/libvirt/qemu/nvram/compute.fd,loader_secure=no \
   --virt-type kvm
 ```
+
+We haven't set up PXE yet, so this will fail over. `Ctrl`+`]` to exit the console. We will leave it running for now.
