@@ -32,39 +32,43 @@
 
 Once your AMI has launched as an instance, it will use the cloud-int process to install all the OpenCHAMI prerequisites.  This will take about five minutes depending on the status of the internal AWS network and your instance type.  Checking the process list for dnf commands is a reasonable way to ascertain if the process is complete.  You can also check the cloud-init logs in `/var/log/cloud-init`.  Errors are often logged while cloud-init continues without failure.
 
-# Preparation Steps
+## Install Prerequisites for non-tutorial instances
 
-## Set Up NFS for Shared Filesystems
+If you are using a tutorial instance from AWS, this is handled within the startup of the instance.  If not, you may run these commands on your own Rocky9 host to get it to the right state for the tutorial
 
-Create `/opt/nfsroot` to store our images
+```bash
+sudo dnf update -y
+sudo dnf install -y \
+  epel-release \
+  libvirt \
+  qemu-kvm \
+  virt-install \
+  virt-manager \
+  dnsmasq \
+  podman \
+  buildah \
+  git \ 
+  vim \
+  ansible-core \
+  openssl \
+  nfs-utils \
+  s3cmd 
+sudo systemctl enable --now libvirtd
+sudo systemctl start libvirtd
+sudo newgrp libvirt
+sudo usermod -aG libvirt rocky
+```
+
+## Set up the node filesystems
+
+Our tutorial uses NFS to share the system images for the diskless VMs.  We also use an S3 store and a container registry as part of our build process for system images.  They all need separate directories.
+
+Create `/opt/nfsroot` to serve our images
 
 ```bash
 sudo mkdir /srv/nfs
 sudo chown rocky: /srv/nfs
 ```
-
-Create `/etc/exports` with the following contents to export the `/srv/nfs` directory for use by our compute nodes
-
-```
-/srv/nfs *(ro,no_root_squash,no_subtree_check,noatime,async,fsid=0)
-```
-
-Reload the NFS daemon
-
-```bash
-modprobe -r nfsd
-sudo modprobe nfsd
-```
-
-## Update `/etc/hosts`
-
-  ```bash
-  echo "172.16.0.254 demo.openchami.cluster" | sudo tee -a /etc/hosts > /dev/null
-  ```
-
-## Set Up Image Infrastructure
-
-### Directories for Image Data
 
 Create a local directory for storing the container images
 
@@ -73,42 +77,12 @@ sudo mkdir -p /data/oci
 sudo chown -R rocky: /data/oci
 ```
 
-Create a local directory for storing SquashFS images
+Create a local directory for s3 access to images
 
 ```bash
 sudo mkdir -p /data/minio
 sudo chown -R rocky: /data/minio
 ```
-
-### Local Image Registry
-
-This is where OCI-formatted images will live so that they can serve as parents for children image layers.
-
-Copy the quadlet file the registry from `quadlets/registry.container` to `/etc/containers/systemd/registry.container`, then reload SystemD and start the service:
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl start registry
-```
-
-### Install Registry CLI tool
-
-We will be using a registry for storing our images, and we need to be able to interact with it somehow so we will be using [`regctl`](https://github.com/regclient/regclient/tree/main/cmd/regctl).
-
-```bash
-sudo curl -fSL https://github.com/regclient/regclient/releases/latest/download/regctl-linux-amd64 -o /usr/local/bin/regctl
-sudo chmod +x /usr/local/bin/regctl
-```
-
-We'll need to configure the registry that we will use to not use TLS:
-
-```bash
-regctl registry set demo.openchami.cluster:5000 --tls disabled
-```
-
-### Working Directory
-
-Then, set up the working directories we'll use for images.
 
 SELinux treats home directories specially. To avoid cgroups conflicting with SELinux enforcement, we set up a working directory outside our home directory.
 
@@ -118,69 +92,120 @@ sudo chown -R rocky: /opt/workdir
 cd /opt/workdir
 ```
 
-### Local Image S3 Instance
+## Set up the internal networks our containers expect and internal hostnames
 
-Copy `quadlets/minio.container` to `/etc/containers/systemd/minio.container`. Then, reload SystemD and start the service:
+```bash
+cat <<EOF > openchami-net.xml
+<network>
+  <name>openchami-net</name>
+  <bridge name="virbr-openchami" />
+  <forward mode='nat'/>
+   <ip address="172.16.0.254" netmask="255.255.255.0">
+   </ip>
+</network>
+EOF
+
+sudo virsh net-define openchami-net.xml
+sudo virsh net-start openchami-net
+sudo virsh net-autostart openchami-net
+```
+
+### Update /etc/hosts 
+
+**Add the demo hostname to /etc/hosts so that all the certs and urls work**
+   ```bash
+   echo "127.0.0.1 demo.openchami.cluster" | sudo tee -a /etc/hosts > /dev/null
+   ```
+
+
+## Enable our non-openchami services
+
+For NFS, we need to update the /etc/exports file and then reload the kernel nfs daemon
+
+  - Create `/etc/exports` with the following contents to export the `/srv/nfs` directory for use by our compute nodes
+    ```bash
+    /srv/nfs *(ro,no_root_squash,no_subtree_check,noatime,async,fsid=0)
+    ```
+
+  - Reload the nfs daemon
+    ```bash
+    sudo modprobe -r nfsd && sudo modprobe nfsd
+    ```
+
+### minio
+
+For our S3 gateway, we use minio which we'll define as a quadlet and start.
+
+Like all the openchami services, we create a container definition in `/etc/containers/systemd/`.  Note that minio makes some network assumptions in this file.
+
+```yaml
+# minio.container
+[Unit]
+Description=Minio S3
+After=local-fs.target network-online.target
+Wants=local-fs.target network-online.target
+
+[Container]
+ContainerName=minio-server
+Image=docker.io/minio/minio:latest
+# Volumes
+Volume=/data/minio:/data:Z
+
+# Ports
+PublishPort=172.16.0.254:9090:9000
+PublishPort=172.16.0.254:9091:9001
+
+# Environemnt Variables
+Environment=MINIO_ROOT_USER=admin
+Environment=MINIO_ROOT_PASSWORD=admin123
+
+# Command to run in container
+Exec=server /data --console-address :9001
+
+[Service]
+Restart=always
+ExecStartPost=podman exec minio-server bash -c 'until curl -sI http://localhost:9000 > /dev/null; do sleep 1; done; mc alias set local http://localhost:9000 admin admin123; mc mb local/efi; mc mb local/boot-images;mc anonymous set download local/efi;mc anonymous set download local/boot-images'
+
+[Install]
+# Start by default on boot
+WantedBy=multi-user.target default.target
+```
+
+### container registry
+
+For our OCI container registry, we use the standard docker registry.  Once again, deployed as a quadlet.
+
+```yaml
+# registry.container
+
+[Unit]
+Description=Image OCI Registry
+After=network-online.target
+Requires=network-online.target
+
+[Container]
+ContainerName=registry
+HostName=registry
+Image=docker.io/library/registry:latest
+Volume=/data/oci:/var/lib/registry:Z
+PublishPort=5000:5000
+
+[Service]
+TimeoutStartSec=0
+Restart=always
+
+[Install]
+WantedBy=default.target
 
 ```
+
+### Reload systemd units to pick up the changes
+
+```bash
 sudo systemctl daemon-reload
-sudo systemctl start minio
 ```
 
-To verify it works, we should be able to cURL the base endpoint:
 
-```bash
-curl http://172.16.0.254:9090
-```
-
-and get an Access Denied:
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<Error><Code>AccessDenied</Code><Message>Access Denied.</Message><Resource>/</Resource><RequestId>1838AD5A9941A638</RequestId><HostId>dd9025bab4ad464b049177c95eb6ebf374d3b3fd1af9251148b658df7ac2e3e8</HostId></Error>
-```
-
-After we've verified it works, let's enable the service:
-
-### Install S3 Client
-
-Now, we need to setup our S3 client, `s3cmd`. Install it:
-
-```
-sudo dnf install s3cmd
-```
-
-Then, create the following file:
-
-**`~/.s3cfg`**
-
-```
-# Setup endpoint
-host_base = demo.openchami.cluster:9090
-host_bucket = demo.openchami.cluster:9090
-bucket_location = us-east-1
-use_https = False
-
-# Setup access keys
-access_key = admin
-secret_key = admin123
-
-# Enable S3 v4 signature APIs
-signature_v2 = False
-```
-
-To make sure it works, list the S3 buckets:
-
-```bash
-s3cmd ls
-```
-
-We should see the two that got created:
-
-```
-2025-04-22 15:24  s3://boot-images
-2025-04-22 15:24  s3://efi
-```
 
 ## Install OpenCHAMI Services
 
