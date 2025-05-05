@@ -12,7 +12,7 @@
 
 # Introduction
 
-In order for OpenCHAMI to be useful, the State Management Database (SMD) needs to be populated with node information. This can be done one of two ways: _dynamic_ discovery via [the `ochami` CLI](https://github.com/OpenCHAMI/ochami) or _static_ discovery via [the `magellan` CLI](https://github.com/OpenCHAMI/magellan).
+In order for OpenCHAMI to be useful, the State Management Database (SMD) needs to be populated with node information. This can be done one of two ways: _static_ discovery via [the `ochami` CLI](https://github.com/OpenCHAMI/ochami) or _dynamic_ discovery via [the `magellan` CLI](https://github.com/OpenCHAMI/magellan).
 
 Static discovery is predictable and easily reproduceable, so we will use it in this tutorial.
 
