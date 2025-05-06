@@ -32,6 +32,13 @@ In order for our nodes to be useful, they need to have an image to boot. Luckily
 
 The image builder works by reading a YAML-formatted image specification, which it uses to create an OCI container image (`buildah from ...`, `buildah mount ...`) and run commands in (`buildah run ...`) in order to build a filesystem within the image. It can then be configured to push the resulting image to a container registry or export it to a SquashFS image and push to S3.
 
+## Install and configure regctl
+
+```bash
+curl -L https://github.com/regclient/regclient/releases/latest/download/regctl-linux-amd64 > regctl && sudo mv regctl /usr/local/bin/regctl && sudo chmod 755 /usr/local/bin/regctl
+registry set --tls disabled demo.openchami.cluster:5000
+```
+
 # Concepts
 
 ## Layers
@@ -167,7 +174,7 @@ options:
   publish_tags: '9.5'
   pkg_manager: 'dnf'
   parent: 'scratch'
-  publish_registry: 'registry.demo.openchami.cluster:5000/demo'
+  publish_registry: 'demo.openchami.cluster:5000/demo'
   registry_opts_push:
     - '--tls-verify=false'
 
@@ -212,7 +219,7 @@ options:
   publish_tags:
     - '9.5'
   pkg_manager: 'dnf'
-  parent: 'registry.demo.openchami.cluster/demo/rocky-base:9.5'
+  parent: 'demo.openchami.cluster/demo/rocky-base:9.5'
   registry_opts_pull:
     - '--tls-verify=false'
 
@@ -225,9 +232,14 @@ options:
   #
   # This is the only way to be able to re-use this image as
   # a parent for another image layer.
-  publish_registry: 'registry.demo.openchami.cluster/demo'
+  publish_registry: 'demo.openchami.cluster/demo'
   registry_opts_push:
     - '--tls-verify=false'
+
+repos:
+  - alias: 'Epel9'
+    url: 'https://dl.fedoraproject.org/pub/epel/9/Everything/x86_64/'
+    gpg: 'https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-9'
 
 packages:
   - cloud-init
@@ -249,7 +261,6 @@ packages:
   - sudo
   - tcpdump
   - traceroute
-  - nss_db
   - lua-posix
   - tcl
   - git
@@ -278,7 +289,7 @@ Now, copy `rocky-base-9.5.yaml` here. This will be our _base layer_, which will 
 Build the image using the `image-build` container:
 
 ```bash
-podman run --rm --device /dev/fuse -v /opt/workdir/images/rocky-base-9.5.yaml:/home/builder/config.yaml ghcr.io/openchami/image-build:latest image-build --config config.yaml --log-level DEBUG
+podman run --rm --device /dev/fuse --network host -v /opt/workdir/images/rocky-base-9.5.yaml:/home/builder/config.yaml ghcr.io/openchami/image-build:latest image-build --config config.yaml --log-level DEBUG
 ```
 
 Example output:
@@ -425,7 +436,6 @@ jq
 lua-posix
 make
 nfs-utils
-nss_db
 python3
 rsyslog
 sudo

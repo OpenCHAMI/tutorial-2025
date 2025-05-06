@@ -198,6 +198,28 @@ WantedBy=multi-user.target
 
 ```
 
+### Webserver for boot artifacts
+
+We expose our nfs directory over https as well to make it easy to serve boot artifacts.
+
+```yaml
+# nginx container
+[Unit]
+Description=Serve /srv/nfs over HTTP
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+ContainerName=nginx
+Image=docker.io/library/nginx:1.28-alpine
+Volume=/srv/nfs:/usr/share/nginx/html:Z
+PublishPort=80:80
+
+[Service]
+TimeoutStartSec=0
+Restart=always
+```
+
 ### Reload systemd units to pick up the changes and start the services
 
 ```bash
@@ -292,47 +314,6 @@ systemctl list-dependencies openchami.target
 ### Autorenewal of Certificates
 
 By default, the TLS certificate expires after 24 hours, so we need to set up a renewal mechanism. One way to do that is with a Systemd timer. Create the following Systemd unit files:
-
-**/etc/systemd/system/ochami-cert-renewal.timer:**
-
-```systemd
-[Unit]
-Description=Renew OpenCHAMI certificates daily
-
-[Timer]
-OnUnitActiveSec=1d
-Persistent=true
-
-[Install]
-WantedBy=timers.target
-```
-
-**/etc/systemd/system/ochami-cert-renewal.service:**
-
-```systemd
-[Unit]
-Description=Renew OpenCHAMI certificates
-
-[Service]
-Type=oneshot
-ExecStart=systemctl restart acme-deploy
-ExecStart=systemctl restart acme-register
-ExecStart=systemctl restart haproxy
-StandardOutput=journal
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Then, reload Systemd and run the service file once to make sure renewal works:
-
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable --now ochami-cert-renewal.timer
-sudo systemctl start ochami-cert-renewal
-```
-
-Make sure the timer shows up:
 
 ```bash
 systemctl list-timers ochami-cert-renewal.timer

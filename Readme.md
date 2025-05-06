@@ -55,9 +55,9 @@ See [Instance_Preparation.md](/Instance_Preparation.md) for the manual steps to 
    --memory 4096 --vcpus 1 \
    --disk none \
    --pxe \
-   --os-variant generic
-   --mac '52:54:00:be:ef:01'
-   --network network:openchami-net,model=virtio
+   --os-variant generic \
+   --mac '52:54:00:be:ef:01' \
+   --network network:openchami-net,model=virtio \
    --boot network,hd
    ```
 1. Use the OpenCHAMI API to control the node identity and boot configuration of the diskless nodes
