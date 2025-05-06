@@ -46,12 +46,14 @@ packages:
 - virt-manager
 
 runcmd:
-- systemctl enable libvirtd
-- systemctl start libvirtd
-- usermod -aG libvirt rocky
-- newgrp libvirt
-- sudo growpart /dev/xvda 4
-- sudo pvresize /dev/xvda4
-- sudo lvextend -l +100%FREE /dev/rocky/lvroot
-- sudo xfs_growfs /
+  - dnf install -y epel-release
+  - dnf install -y s3cmd
+  - systemctl enable libvirtd
+  - systemctl start libvirtd
+  - usermod -aG libvirt rocky
+  - newgrp libvirt
+  - sudo growpart /dev/xvda 4
+  - sudo pvresize /dev/xvda4
+  - sudo lvextend -l +100%FREE /dev/rocky/lvroot
+  - sudo xfs_growfs /
 ```

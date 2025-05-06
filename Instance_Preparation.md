@@ -167,8 +167,7 @@ Restart=always
 ExecStartPost=podman exec minio-server bash -c 'until curl -sI http://localhost:9000 > /dev/null; do sleep 1; done; mc alias set local http://localhost:9000 admin admin123; mc mb local/efi; mc mb local/boot-images;mc anonymous set download local/efi;mc anonymous set download local/boot-images'
 
 [Install]
-# Start by default on boot
-WantedBy=multi-user.target default.target
+WantedBy=multi-user.target
 ```
 
 ### container registry
@@ -195,14 +194,16 @@ TimeoutStartSec=0
 Restart=always
 
 [Install]
-WantedBy=default.target
+WantedBy=multi-user.target
 
 ```
 
-### Reload systemd units to pick up the changes
+### Reload systemd units to pick up the changes and start the services
 
 ```bash
 sudo systemctl daemon-reload
+sudo systemctl start minio.service
+sudo systemctl start registry.service
 ```
 
 
@@ -261,6 +262,22 @@ Exec=/usr/local/bin/cloud-init-server --impersonation=true
 
 under the `[Container]` section.
 
+### Initialize and Trust the Internal Root CA Certificate
+
+When the Certificate Authority is started for the first time, a root CA certificate was generated in order to support TLS on the haproxy gateway. 
+
+```bash
+sudo systemctl start step-ca.service
+```
+
+
+We need to add this certificate to the trusted anchors:
+
+```bash
+sudo podman run --rm --network openchami-cert-internal docker.io/curlimages/curl -sk https://step-ca:9000/roots.pem | sudo tee /etc/pki/ca-trust/source/anchors/ochami.pem
+sudo update-ca-trust
+```
+
 ### Start OpenCHAMI
 
 Even though OpenCHAMI runs as a collection of containers, the podman integration with systemd allows us to start, stop, and trace OpenCHAMI as a set of dependent services through the `openchami.target` unit.
@@ -270,14 +287,7 @@ sudo systemctl start openchami.target
 systemctl list-dependencies openchami.target
 ```
 
-### Trust Root CA Certificate
 
-When the OpenCHAMI services started for the first time, a root CA certificate was generated in order to support TLS on the haproxy gateway. We need to add this certificate to the trusted anchors:
-
-```
-sudo podman run --rm --network openchami-cert-internal docker.io/curlimages/curl -sk https://step-ca:9000/roots.pem | sudo tee /etc/pki/ca-trust/source/anchors/ochami.pem
-sudo update-ca-trust
-```
 
 ### Autorenewal of Certificates
 
