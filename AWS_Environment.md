@@ -40,7 +40,6 @@ packages:
 - openssl
 - podman
 - qemu-kvm
-- s3cmd
 - vim
 - virt-install
 - virt-manager

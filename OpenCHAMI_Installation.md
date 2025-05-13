@@ -50,6 +50,10 @@ sudo systemctl start openchami.target
 systemctl list-dependencies openchami.target
 ```
 
+### Service Configuration
+
+The OpenCHAMI release rpm is created with sensible default configurations for this tutorial and all configuration files are included in the `/etc/openchami` directory.  To understand each one in detail, review the (service_configuration)[service_configuration.md] instructions
+
 ## Install and Configure OpenCHAMI Client
 
 The [`ochami` CLI](https://github.com/OpenCHAMI/ochami) provides us an easy way to interact with the OpenCHAMI services.
