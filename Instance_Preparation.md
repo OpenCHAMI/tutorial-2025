@@ -227,6 +227,7 @@ Restart=always
 sudo systemctl daemon-reload
 sudo systemctl start minio.service
 sudo systemctl start registry.service
+sudo systemctl start nginx.service
 ```
 
 

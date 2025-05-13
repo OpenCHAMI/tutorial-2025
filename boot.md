@@ -27,13 +27,13 @@ Let's add some. We will be using the `ochami` CLI tool for this.
 We can get the boot parameters for all known nodes (in JSON form):
 
 ```bash
-ochami boot params get | jq
+ochami bss boot params get | jq
 ```
 
 We can filter by node as well:
 
 ```bash
-ochami boot params get --mac 52:54:00:be:ef:01,52:54:00:be:ef:02 | jq
+ochami bss boot params get --mac 52:54:00:be:ef:01,52:54:00:be:ef:02 | jq
 ```
 
 ## Adding New Boot Parameters

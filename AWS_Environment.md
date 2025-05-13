@@ -30,27 +30,27 @@ Just like OpenCHAMI, AWS provides teh ability to inject cloud-config data at run
 #cloud-config
 
 packages:
-- ansible-core
-- bash-completion
-- buildah
-- dnsmasq
-- git
-- libvirt
-- nfs-utils
-- openssl
-- podman
-- qemu-kvm
-- vim
-- virt-install
-- virt-manager
+  - libvirt
+  - qemu-kvm
+  - virt-install
+  - virt-manager
+  - dnsmasq
+  - podman
+  - buildah
+  - git
+  - vim
+  - ansible-core
+  - openssl
+  - nfs-utils
 
+# Post-package installation commands
 runcmd:
   - dnf install -y epel-release
   - dnf install -y s3cmd
-  - systemctl enable libvirtd
+  - systemctl enable --now libvirtd
   - systemctl start libvirtd
-  - usermod -aG libvirt rocky
   - newgrp libvirt
+  - usermod -aG libvirt rocky
   - sudo growpart /dev/xvda 4
   - sudo pvresize /dev/xvda4
   - sudo lvextend -l +100%FREE /dev/rocky/lvroot

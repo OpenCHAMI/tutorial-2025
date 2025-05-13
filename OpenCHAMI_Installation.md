@@ -129,3 +129,18 @@ We should get:
 ```
 
 Voilà!
+
+
+## Generating Authentication Token
+
+In order to interact with protected endpoints, we will need to generate a JSON Web Token (JWT, pronounced _jot_). `ochami` reads an environment variable named `<CLUSTER_NAME>_ACCESS_TOKEN` where `<CLUSTER_NAME>` is the configured name of the cluster in all capitals, `DEMO` in our case.
+
+Since we aren't using an external identity provider, we will use OpenCHAMI's internal one to generate a token. The RPM we installed comes with some shell functions that allow us to do this.
+
+```bash
+export DEMO_ACCESS_TOKEN=$(sudo bash -lc 'gen_access_token')
+```
+
+Note that `sudo` is needed because the containers are running as root and so if `sudo` is omitted, the containers will not be found.
+
+OpenCHAMI tokens last for an hour by default. Whenever one needs to be regenerated, run the above command.
