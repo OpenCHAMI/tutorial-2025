@@ -1,0 +1,68 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Tutorial EC2 Launch Template
+
+Parameters:
+  KeyPair:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Key pair to use for SSH access
+  SecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: Security Group ID
+  SubnetId:
+    Type: AWS::EC2::Subnet::Id
+    Description: Subnet ID to launch instance in
+
+Resources:
+  TutorialLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: TutorialLaunchTemplate
+      LaunchTemplateData:
+        ImageId: ami-rocky9 # replace with a valid Rocky9 AMI ID for your region
+        InstanceType: t3.small # default, but modifiable on launch within constraints
+        KeyName: !Ref KeyPair
+        SecurityGroupIds:
+          - !Ref SecurityGroupId
+        BlockDeviceMappings:
+          - DeviceName: /dev/xvda
+            Ebs:
+              VolumeSize: 100
+              VolumeType: gp3
+        UserData:
+          Fn::Base64: !Sub |
+            #cloud-config
+
+            packages:
+            - libvirt
+            - qemu-kvm
+            - virt-install
+            - virt-manager 
+            - dnsmasq
+            - podman
+            - buildah
+            - git
+            - vim
+            - ansible-core
+            - openssl
+            - nfs-utils
+
+            runcmd:
+            - systemctl enable --now libvirtd
+            - systemctl start libvirtd
+            - newgrp libvirt
+            - usermod -aG libvirt rocky
+            - sudo growpart /dev/xvda 4
+            - sudo pvresize /dev/xvda4
+            - sudo lvextend -l +100%FREE /dev/rocky/lvroot
+            - sudo xfs_growfs /
+
+        InstanceTypeSpecification:
+          AllowedInstanceTypes:
+            - t3.small
+            - t2.2xlarge
+            - c5n.metal
+
+Outputs:
+  LaunchTemplateId:
+    Value: !Ref TutorialLaunchTemplate
+    Description: Launch Template ID

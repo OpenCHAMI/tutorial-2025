@@ -1,0 +1,45 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Lambda function to auto-delete EC2 instances after 10 hours.
+
+Resources:
+  InstanceCleanupFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: TutorialInstanceCleanup
+      Runtime: python3.12
+      Handler: lambda_function.lambda_handler
+      Role: arn:aws:iam::ACCOUNT_ID:role/TutorialAdminRole # Update with your actual role ARN
+      Timeout: 60
+      Code:
+        ZipFile: |
+          import boto3, datetime, os
+
+          def lambda_handler(event, context):
+              ec2 = boto3.resource('ec2')
+              filters = [{'Name': 'tag:LaunchedBy', 'Values': ['TutorialLaunchTemplate']}]
+
+              instances = ec2.instances.filter(Filters=filters)
+              now = datetime.datetime.now(datetime.timezone.utc)
+
+              for instance in instances:
+                  launch_time = instance.launch_time
+                  runtime = now - launch_time
+                  if runtime.total_seconds() > 36000:  # 10 hours in seconds
+                      instance.terminate()
+                      print(f"Terminated instance {instance.id} running for {runtime}.")
+
+  CleanupEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      ScheduleExpression: rate(30 minutes)
+      Targets:
+        - Arn: !GetAtt InstanceCleanupFunction.Arn
+          Id: CleanupLambdaTrigger
+
+  PermissionForEventsToInvokeLambda:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref InstanceCleanupFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt CleanupEventRule.Arn

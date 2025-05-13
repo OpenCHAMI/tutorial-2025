@@ -1,0 +1,68 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: IAM permission sets for tutorial admin and instructors.
+
+Resources:
+  TutorialAdminRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: TutorialAdminRole
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: arn:aws:iam::ACCOUNT_ID:root # update to your admin principals
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: TutorialAdminPermissions
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:*
+                  - lambda:*
+                  - iam:PassRole
+                  - logs:*
+                  - cloudformation:*
+                Resource: "*"
+
+  TutorialInstructorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: TutorialInstructorRole
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: arn:aws:iam::ACCOUNT_ID:root # update as needed
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: TutorialInstructorPermissions
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: AllowRunInstancesWithTaggedLaunchTemplates
+                Effect: Allow
+                Action:
+                  - ec2:RunInstances
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    ec2:ResourceTag/LaunchedBy: "TutorialLaunchTemplate"
+
+              - Sid: AllowTerminateInstancesWithTag
+                Effect: Allow
+                Action:
+                  - ec2:TerminateInstances
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    ec2:ResourceTag/LaunchedBy: "TutorialLaunchTemplate"
+
+              - Effect: Allow
+                Action:
+                  - ec2:Describe*
+                  - ec2:GetConsoleOutput
+                  - ec2:CreateKeyPair
+                  - cloudshell:*
+                Resource: "*"

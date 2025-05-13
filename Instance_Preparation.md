@@ -70,6 +70,7 @@ sudo mkdir /srv/nfs
 sudo chown rocky: /srv/nfs
 ```
 
+
 Create a local directory for storing the container images
 
 ```bash

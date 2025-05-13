@@ -4,6 +4,7 @@ This repository walks a user through setting up an EC2 instance to test the Open
 
 ## Getting ready
 
+
 If you are using this tutorial as part of an organized class, the AWS instance will be provided for you.  However, you can choose to run this independently by following the directions in [AWS_Environment.md](/AWS_Environment.md).
 
 ## Organization
