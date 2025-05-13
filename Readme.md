@@ -2,7 +2,40 @@
 
 This repository walks a user through setting up an EC2 instance to test the OpenCHAMI software.
 
-See [AWS_Environment.md](/AWS_Environment.md) for setting up your own AWS environment if one is not provided for you in the tutorial.
+## Getting ready
+
+If you are using this tutorial as part of an organized class, the AWS instance will be provided for you.  However, you can choose to run this independently by following the directions in [AWS_Environment.md](/AWS_Environment.md).
+
+## Organization
+
+The tutorial is organized into four parts.  Each part starts with slides and education followed by an exercise for students to apply what they've learned
+
+### 1. Head Node Preparation
+
+In a real HPC system, you'll certainly use automation to create your head node(s) to run OpenCHAMI.  For this tutorial, the student will directly interact with Podman Quadlets to create services and configurations to set up a head node that can not only control an HPC system, but also act as a virtualization platform for diskless HPC nodes.
+
+* Head Node Preparation is covered by [Instance_Presentation.md](Instance_Preparation.md)
+
+### 2. OpenCHAMI installation
+
+OpenCHAMI can be managed via Kubernetes, Docker Compose, and Podman Quadlets.  The official OpenCHAMI release process builds an RPM that includes quadlet files.  These unit files reference official containers to start and manage services.
+
+* OpenCHAMI Installation is covered by [OpenCHAMI_Installation.md](OpenCHAMI_Installation.md)
+
+### 3. Simulated HPC Nodes
+
+Testing system management without physical nodes presents significant challenges.  Rather than expose the complexity of sourcing and configuring hardware as a prerequisite, we will use a recipe for virtualizing a network and set of diskless nodes using libvirt.  Using the `c5.metal` instance type allows us to leverage the kernel virtualization engine without emulation.  Students will learn the libvirt toolset and they apply it to create and manage diskless compute nodes.
+
+* Libvirt-based Virtual Nodes are covered by [Virtual_Compute_Nodes.md](Virtual_Compute_Nodes.md)
+
+### 4. OpenCHAMI Management Use Cases
+
+Using APIs, students will use the OpenCHAMI services to create and manage a virtual HPC system.  This involves:
+
+* Creating layered system images and organizing them with an OCI registry
+* Creating a boot configuration for compute node
+* Converting a compute node to a front-end node
+* Updating kernel parameters for all nodes
 
 See [Instance_Preparation.md](/Instance_Preparation.md) for the manual steps to prepare a node to be an OpenCHAMI head node.
 1. Create the virtual node information

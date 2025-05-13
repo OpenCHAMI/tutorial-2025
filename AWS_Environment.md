@@ -4,9 +4,9 @@ For this tutorial, you will be provided with your own EC2 instance and ssh key f
 
 ## Instance Information
 
-In order to run multiple compute nodes as VMs inside your instance, you will need plenty of RAM.  We've found that at least 4G per guest is necessary.  It's possible to oversubscribe the instances, but performance suffers.  We chose t2.2xlarge instances to optimize for RAM and cost.
+In order to run multiple compute nodes as VMs inside your instance, you will need plenty of RAM.  We've found that at least 4G per guest is necessary.  It's possible to oversubscribe the instances, but performance suffers.  We chose c5.metal instances to optimize for RAM and cost. 
 
-In addition, while the aarch (Graviton) instances are cheaper than the comparable x86 instances, not all of the software we rely on is confirmed to work on an ARM system.
+In addition, while the aarch (Graviton) instances are cheaper than the comparable x86 instances, not all of the software we rely on is confirmed to work on an ARM system.  Future versions of this tutorial will likely switch to cheaper ARM instances.
 
 ### Operating System (Rocky 9)
 
