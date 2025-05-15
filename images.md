@@ -39,6 +39,46 @@ curl -L https://github.com/regclient/regclient/releases/latest/download/regctl-l
 /usr/local/bin/regctl registry set --tls disabled demo.openchami.cluster:5000
 ```
 
+## Install S3 Client
+
+Now, we need to setup our S3 client, `s3cmd`. Install it:
+
+```
+sudo dnf install s3cmd
+```
+
+Then, create the following file:
+
+**`~/.s3cfg`**
+
+```
+# Setup endpoint
+host_base = demo.openchami.cluster:9090
+host_bucket = demo.openchami.cluster:9090
+bucket_location = us-east-1
+use_https = False
+
+# Setup access keys
+access_key = admin
+secret_key = admin123
+
+# Enable S3 v4 signature APIs
+signature_v2 = False
+```
+
+To make sure it works, list the S3 buckets:
+
+```bash
+s3cmd ls
+```
+
+We should see the two that got created:
+
+```
+2025-04-22 15:24  s3://boot-images
+2025-04-22 15:24  s3://efi
+```
+
 # Concepts
 
 ## Layers
@@ -164,7 +204,7 @@ The same as the base layer `options` key with the following keys added. Only the
 ## Examples
 
 Let's examine two image configuration files.
-These example files can be found in the `image-configs` directory of this tutorial:
+
 
 ### `base.yaml`
 
@@ -220,12 +260,12 @@ options:
   publish_tags:
     - '9.5'
   pkg_manager: 'dnf'
-  parent: 'demo.openchami.cluster/demo/rocky-base:9.5'
+  parent: 'demo.openchami.cluster:5000/demo/rocky-base:9.5'
   registry_opts_pull:
     - '--tls-verify=false'
 
   # Publish SquashFS image to local S3
-  publish_s3: 'http://s3.my.cluster'
+  publish_s3: 'http://demo.openchami.cluster:9090'
   s3_prefix: 'compute/base/'
   s3_bucket: 'boot-images'
 
@@ -233,7 +273,7 @@ options:
   #
   # This is the only way to be able to re-use this image as
   # a parent for another image layer.
-  publish_registry: 'demo.openchami.cluster/demo'
+  publish_registry: 'demo.openchami.cluster:5000/demo'
   registry_opts_push:
     - '--tls-verify=false'
 
@@ -285,12 +325,11 @@ mkdir -p /opt/workdir/images
 cd /opt/workdir/images
 ```
 
-Now, copy `rocky-base-9.5.yaml` file from the `image-configs` directory here. This will be our _base layer_, which will essentially be a generalized Rocky Linux 9.5 image.
 
 Build the image using the `image-build` container:
 
 ```bash
-podman run --rm --device /dev/fuse --network host -v /opt/workdir/images/rocky-base-9.5.yaml:/home/builder/config.yaml ghcr.io/openchami/image-build:latest image-build --config config.yaml --log-level DEBUG
+podman run --rm --device /dev/fuse --network host -v /opt/workdir/images/base.yaml:/home/builder/config.yaml ghcr.io/openchami/image-build:latest image-build --config config.yaml --log-level DEBUG
 ```
 
 Example output:
@@ -357,8 +396,6 @@ Output:
 
 # Creating a Compute Image Layer
 
-Copy the `compute-base-9.5.yaml` file from the `image-configs` directory over to the `/opt/workdir/images` directory and take a look at it. This is largely the same setup as the base image except for a few things:
-
 - The compute image uses the base image as its parent:
 
   ```yaml
@@ -385,7 +422,7 @@ Copy the `compute-base-9.5.yaml` file from the `image-configs` directory over to
 Let's build the image:
 
 ```bash
-podman run --rm --device /dev/fuse -e S3_ACCESS=admin -e S3_SECRET=admin123 -v /opt/workdir/images/compute-base-9.5.yaml:/home/builder/config.yaml ghcr.io/openchami/image-build:latest image-build --config config.yaml --log-level DEBUG
+podman run --rm --device /dev/fuse -e "S3_ACCESS=admin" -e "S3_SECRET=admin123" -v /opt/workdir/images/compute.yaml:/home/builder/config.yaml ghcr.io/openchami/image-build:latest image-build --config config.yaml --log-level DEBUG
 ```
 
 Notice that this time we pass S3 credentials into the image builder so it can push the image to S3.

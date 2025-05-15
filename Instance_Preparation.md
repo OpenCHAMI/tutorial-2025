@@ -143,8 +143,8 @@ Image=docker.io/minio/minio:latest
 Volume=/data/minio:/data:Z
 
 # Ports
-PublishPort=172.16.0.254:9090:9000
-PublishPort=172.16.0.254:9091:9001
+PublishPort=9090:9000
+PublishPort=9091:9001
 
 # Environemnt Variables
 Environment=MINIO_ROOT_USER=admin
