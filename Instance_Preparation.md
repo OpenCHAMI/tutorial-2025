@@ -47,14 +47,18 @@ sudo dnf install -y \
   dnsmasq \
   podman \
   buildah \
-  git \ 
+  git \
   vim \
   ansible-core \
   openssl \
   nfs-utils \
-  s3cmd 
+  s3cmd
+```
+
+Start the libvirtd daemon and add the rocky user to a new libvirt group.
+
+```bash
 sudo systemctl enable --now libvirtd
-sudo systemctl start libvirtd
 sudo newgrp libvirt
 sudo usermod -aG libvirt rocky
 ```
@@ -69,7 +73,6 @@ Create `/opt/nfsroot` to serve our images
 sudo mkdir /srv/nfs
 sudo chown rocky: /srv/nfs
 ```
-
 
 Create a local directory for storing the container images
 
@@ -111,7 +114,7 @@ sudo virsh net-start openchami-net
 sudo virsh net-autostart openchami-net
 ```
 
-### Update /etc/hosts 
+### Update /etc/hosts
 
 **Add the demo hostname to /etc/hosts so that all the certs and urls work**
    ```bash
@@ -123,7 +126,7 @@ sudo virsh net-autostart openchami-net
 
 For NFS, we need to update the /etc/exports file and then reload the kernel nfs daemon
 
-  - Create `/etc/exports` with the following contents to export the `/srv/nfs` directory for use by our compute nodes
+  - Create the `/etc/exports` file with the following contents to export the `/srv/nfs` directory for use by our compute nodes
     ```bash
     /srv/nfs *(ro,no_root_squash,no_subtree_check,noatime,async,fsid=0)
     ```
@@ -137,7 +140,7 @@ For NFS, we need to update the /etc/exports file and then reload the kernel nfs 
 
 For our S3 gateway, we use minio which we'll define as a quadlet and start.
 
-Like all the openchami services, we create a container definition in `/etc/containers/systemd/`.  Note that minio makes some network assumptions in this file.
+Like all the openchami services, we create a container definition in `/etc/containers/systemd/`.
 
 ```yaml
 # minio.container
@@ -171,6 +174,9 @@ ExecStartPost=podman exec minio-server bash -c 'until curl -sI http://localhost:
 WantedBy=multi-user.target
 ```
 
+> [!NOTE]
+> `minio` makes some network assumptions in this file. Change it accordingly to fit your setup or use case.
+
 ### container registry
 
 For our OCI container registry, we use the standard docker registry.  Once again, deployed as a quadlet.
@@ -201,10 +207,10 @@ WantedBy=multi-user.target
 
 ### Webserver for boot artifacts
 
-We expose our nfs directory over https as well to make it easy to serve boot artifacts.
+We expose our NFS directory over https as well to make it easy to serve boot artifacts.
 
 ```yaml
-# nginx container
+# nginx.container
 [Unit]
 Description=Serve /srv/nfs over HTTP
 After=network-online.target
@@ -229,6 +235,3 @@ sudo systemctl start minio.service
 sudo systemctl start registry.service
 sudo systemctl start nginx.service
 ```
-
-
-

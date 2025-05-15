@@ -36,7 +36,7 @@ The image builder works by reading a YAML-formatted image specification, which i
 
 ```bash
 curl -L https://github.com/regclient/regclient/releases/latest/download/regctl-linux-amd64 > regctl && sudo mv regctl /usr/local/bin/regctl && sudo chmod 755 /usr/local/bin/regctl
-registry set --tls disabled demo.openchami.cluster:5000
+/usr/local/bin/regctl registry set --tls disabled demo.openchami.cluster:5000
 ```
 
 # Concepts
@@ -163,7 +163,8 @@ The same as the base layer `options` key with the following keys added. Only the
 
 ## Examples
 
-Let's examine two image configuration files:
+Let's examine two image configuration files.
+These example files can be found in the `image-configs` directory of this tutorial:
 
 ### `base.yaml`
 
@@ -210,7 +211,7 @@ Two of the Rocky package repositories, BaseOS and Appstream, are added. Then, th
 
 Finally, some commands are run. We run `dracut` to include kernel modules that enable the kernel to be able to mount a SquashFS image as its rootfs in memory.
 
-## `compute.yaml`
+### `compute.yaml`
 
 ```yaml
 options:
@@ -284,7 +285,7 @@ mkdir -p /opt/workdir/images
 cd /opt/workdir/images
 ```
 
-Now, copy `rocky-base-9.5.yaml` here. This will be our _base layer_, which will essentially be a generalized Rocky Linux 9.5 image.
+Now, copy `rocky-base-9.5.yaml` file from the `image-configs` directory here. This will be our _base layer_, which will essentially be a generalized Rocky Linux 9.5 image.
 
 Build the image using the `image-build` container:
 
@@ -324,7 +325,7 @@ INFO - untagged: localhost/rocky-base:9.5
 INFO - 327ed14011200c2c9a381f244ff0ca2ddf95fd83f747d2891e0456c079c4c23c
 
 -------------------BUILD LAYER--------------------
-pushing layer rocky-base to demo.openchami.cluster:5000/openchami/rocky-base:9.5
+pushing layer rocky-base to demo.openchami.cluster:5000/demo/rocky-base:9.5
 ```
 
 Now, if we list the images in our registry:
@@ -333,16 +334,19 @@ Now, if we list the images in our registry:
 regctl repo ls demo.openchami.cluster:5000
 ```
 
-we will see the base image:
+We will see the base image:
 
 ```
-openchami/rocky-base
+demo/rocky-base
 ```
+
+> [!TIP]
+> If you get an error that states "http: server gave HTTP response to HTTPS client", try running `regctl registry set --tls disabled demo.openchami.cluster:5000` to disable TLS and thne try listing the images again.
 
 We should also be able to see the tag we set:
 
 ```bash
-regctl tag ls demo.openchami.cluster:5000/openchami/rocky-base
+regctl tag ls demo.openchami.cluster:5000/demo/rocky-base
 ```
 
 Output:
@@ -353,12 +357,12 @@ Output:
 
 # Creating a Compute Image Layer
 
-Copy `image-configs/compute-base-9.5.yaml` to the `/opt/workdir/images` directory and take a look at it. This is largely the same setup as the base image except for a few things:
+Copy the `compute-base-9.5.yaml` file from the `image-configs` directory over to the `/opt/workdir/images` directory and take a look at it. This is largely the same setup as the base image except for a few things:
 
 - The compute image uses the base image as its parent:
 
   ```yaml
-  parent: 'demo.openchami.cluster:5000/openchami/rocky-base:9.5'
+  parent: 'demo.openchami.cluster:5000/demo/rocky-base:9.5'
   registry_opts_pull:
     - '--tls-verify=false'
   ```

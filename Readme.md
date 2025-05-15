@@ -42,13 +42,11 @@ Testing system management without physical nodes presents significant challenges
 
 Using APIs, students will use the OpenCHAMI services to create and manage a virtual HPC system.  This involves:
 
-* Discovering your virtual nodes (discovery.md)[discovery.md]
-* Creating layered system images and organizing them with an OCI registry (images.md)[images.md]
-* Creating a boot configuration for compute node (boot.md)[boot.md]
-* Leveraging cloud-init to customize the boot of compute nodes (cloud-init.md)[cloud-init.md]
+* [Discovering your virtual nodes](discovery.md)
+* [Creating layered system images and organizing them with an OCI registry](images.md)
+* [Creating a boot configuration for compute node](boot.md)
+* [Leveraging cloud-init to customize the boot of compute nodes](cloud-init.md)
 * Updating kernel parameters for all nodes
-
-
 
 # Use cases
 
