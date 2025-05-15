@@ -126,9 +126,20 @@ We should now be ready to boot the image!
 Boot the first compute node into the debug image, following the console:
 
 ```bash
-sudo virsh reset compute1  # Use `virsh start` if powered off
-sudo virsh console compute1
+sudo virt-install \
+  --name compute1 \
+  --memory 4096 \
+  --vcpus 1 \
+  --disk none \
+  --pxe \
+  --os-variant centos-stream9 \
+  --network network=openchami-net,model=virtio,mac=52:54:00:be:ef:01 \
+  --graphics none \
+  --console pty,target_type=serial \
+  --boot network,hd \
+  --virt-type kvm
 ```
+
 
 We should see our IP address get assigned, kernel and initramfs downloaded, and SquashFS loaded:
 
