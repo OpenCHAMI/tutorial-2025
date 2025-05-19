@@ -148,3 +148,10 @@ The output should be:
   "Type": "Node"
 }
 ```
+
+> [!TIP]
+> Don't forget to set the `*_ACCESS_TOKEN` environment variable!
+>
+> ```bash
+> export DEMO_ACCESS_TOKEN=$(sudo bash -lc 'gen_access_token')
+> ```
