@@ -52,7 +52,7 @@ if [ -d "$OUTPUT_DIR" ]; then
         else
             echo "Output directory '$OUTPUT_DIR' is not empty"
             echo "Use the --replace flag to overwrite existing files."
-            echo "Usage: $0 <container-image> <output-dir> [--replace]" 
+            echo "Usage: $0 <container-image> <output-dir> [--replace]"
             exit 1
         fi
     fi

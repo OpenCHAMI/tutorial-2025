@@ -1,19 +1,121 @@
 # Instance Preparation
 
+## Contents
+
+- [Instance Preparation](#instance-preparation)
+  - [Contents](#contents)
+- [Introduction](#introduction)
+  - [Install Prerequisites for non-tutorial instances](#install-prerequisites-for-non-tutorial-instances)
+  - [Set up the node filesystems](#set-up-the-node-filesystems)
+  - [Set up the internal networks our containers expect and internal hostnames](#set-up-the-internal-networks-our-containers-expect-and-internal-hostnames)
+    - [Update /etc/hosts](#update-etchosts)
+  - [Enable our non-openchami services](#enable-our-non-openchami-services)
+    - [minio](#minio)
+    - [container registry](#container-registry)
+    - [Webserver for boot artifacts](#webserver-for-boot-artifacts)
+    - [Reload systemd units to pick up the changes and start the services](#reload-systemd-units-to-pick-up-the-changes-and-start-the-services)
+
+# Introduction
+
 Once your AMI has launched as an instance, it will use the cloud-int process to install all the OpenCHAMI prerequisites.  This will take about five minutes depending on the status of the internal AWS network and your instance type.  Checking the process list for dnf commands is a reasonable way to ascertain if the process is complete.  You can also check the cloud-init logs in `/var/log/cloud-init`.  Errors are often logged while cloud-init continues without failure.
 
-## Set up NFS for filesystems
+## Install Prerequisites for non-tutorial instances
 
-**Create the directory and make sure it is properly shared.**
+If you are using a tutorial instance from AWS, this is handled within the startup of the instance.  If not, you may run these commands on your own Rocky9 host to get it to the right state for the tutorial
 
-  - Create `/opt/nfsroot` to store our images
+```bash
+sudo dnf update -y
+sudo dnf install -y \
+  epel-release \
+  libvirt \
+  qemu-kvm \
+  virt-install \
+  virt-manager \
+  dnsmasq \
+  podman \
+  buildah \
+  git \
+  vim \
+  ansible-core \
+  openssl \
+  nfs-utils \
+  s3cmd
+```
+
+Start the libvirtd daemon and add the rocky user to a new libvirt group.
+
+```bash
+sudo systemctl enable --now libvirtd
+sudo newgrp libvirt
+sudo usermod -aG libvirt rocky
+```
+
+## Set up the node filesystems
+
+Our tutorial uses NFS to share the system images for the diskless VMs.  We also use an S3 store and a container registry as part of our build process for system images.  They all need separate directories.
+
+Create `/opt/nfsroot` to serve our images
+
+```bash
+sudo mkdir /srv/nfs
+sudo chown rocky: /srv/nfs
+```
+
+Create a local directory for storing the container images
+
+```bash
+sudo mkdir -p /data/oci
+sudo chown -R rocky: /data/oci
+```
+
+Create a local directory for s3 access to images
+
+```bash
+sudo mkdir -p /data/minio
+sudo chown -R rocky: /data/minio
+```
+
+SELinux treats home directories specially. To avoid cgroups conflicting with SELinux enforcement, we set up a working directory outside our home directory.
+
+```bash
+sudo mkdir -p /opt/workdir
+sudo chown -R rocky: /opt/workdir
+cd /opt/workdir
+```
+
+## Set up the internal networks our containers expect and internal hostnames
+
+```bash
+cat <<EOF > openchami-net.xml
+<network>
+  <name>openchami-net</name>
+  <bridge name="virbr-openchami" />
+  <forward mode='nat'/>
+   <ip address="172.16.0.254" netmask="255.255.255.0">
+   </ip>
+</network>
+EOF
+
+sudo virsh net-define openchami-net.xml
+sudo virsh net-start openchami-net
+sudo virsh net-autostart openchami-net
+```
+
+### Update /etc/hosts
+
+**Add the demo hostname to /etc/hosts so that all the certs and urls work**
+   ```bash
+   echo "127.0.0.1 demo.openchami.cluster" | sudo tee -a /etc/hosts > /dev/null
+   ```
+
+
+## Enable our non-openchami services
+
+For NFS, we need to update the /etc/exports file and then reload the kernel nfs daemon
+
+  - Create the `/etc/exports` file with the following contents to export the `/srv/nfs` directory for use by our compute nodes
     ```bash
-    sudo mkdir /opt/nfsroot && sudo chown rocky /opt/nfsroot
-    ```
-
-  - Create `/etc/exports` with the following contents to export the `/opt/nfsroot` directory for use by our compute nodes
-    ```bash
-    /opt/nfsroot *(ro,no_root_squash,no_subtree_check,noatime,async,fsid=0)
+    /srv/nfs *(ro,no_root_squash,no_subtree_check,noatime,async,fsid=0)
     ```
 
   - Reload the nfs daemon
@@ -21,62 +123,102 @@ Once your AMI has launched as an instance, it will use the cloud-int process to 
     sudo modprobe -r nfsd && sudo modprobe nfsd
     ```
 
-## Update /etc/hosts 
+### minio
 
-**Add the demo hostname to /etc/hosts so that all the certs and urls work**
-   ```bash
-   echo "127.0.0.1 demo.openchami.cluster" | sudo tee -a /etc/hosts > /dev/null
-   ```
+For our S3 gateway, we use minio which we'll define as a quadlet and start.
 
-## Set up a local container registry and working directory for system images
+Like all the openchami services, we create a container definition in `/etc/containers/systemd/`.
 
-  - Create a local directory for storing the container images
-    ```bash
-    sudo mkdir /opt/containers/ && sudo chown rocky /opt/containers/
-    ```
+```yaml
+# minio.container
+[Unit]
+Description=Minio S3
+After=local-fs.target network-online.target
+Wants=local-fs.target network-online.target
 
-  - Start the local container registry
-    ```bash
-    podman container run -dt -p 5000:5000 -v /opt/containers:/var/lib/registry:Z --name registry docker.io/library/registry:2
-    ```
+[Container]
+ContainerName=minio-server
+Image=docker.io/minio/minio:latest
+# Volumes
+Volume=/data/minio:/data:Z
 
-  - Set up the working directories we'll use for images
+# Ports
+PublishPort=9090:9000
+PublishPort=9091:9001
 
-    SELinux treats home directories specially.  To avoid cgroups conflicting with SELinux enforcement, we set up a working directory outside our home directory.
-    ```bash
-    sudo mkdir -p /opt/workdir  && sudo chown -R rocky:rocky /opt/workdir && cd /opt/workdir
-    ```
+# Environemnt Variables
+Environment=MINIO_ROOT_USER=admin
+Environment=MINIO_ROOT_PASSWORD=admin123
 
-## Install OpenCHAMI
+# Command to run in container
+Exec=server /data --console-address :9001
 
-There are several ways to install and activate OpenCHAMI on a head node.  For this tutorial, we will use the signed RPM from the [openchami/release](https://github.com/openchami/release) repository.  This RPM mainly exists to hold systemd unit filed which run containers as podman quadlets.  As part of the installation, the RPM pulls all the OpenCHAMI containers from the github container registry.  The RPM itself is signed and each container is attested publicly through Sigstore tooling integrated by GitHub.  You can read more about the attestation process in the [Github Documentation](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations/using-artifact-attestations-to-establish-provenance-for-builds).
+[Service]
+Restart=always
+ExecStartPost=podman exec minio-server bash -c 'until curl -sI http://localhost:9000 > /dev/null; do sleep 1; done; mc alias set local http://localhost:9000 admin admin123; mc mb local/efi; mc mb local/boot-images;mc anonymous set download local/efi;mc anonymous set download local/boot-images'
 
-To make things easier for the tutorial, we have created a [bash script](https://gist.github.com/alexlovelltroy/96bfc8bb6f59c0845617a0dc659871de) that:
-
-1. identifies the latest release rpm
-1. downloads the public signing key for OpenCHAMI
-1. downloads the rpm
-1. verifies the signature
-1. installs the RPM
-
-### Install Command
-```bash
-curl -fsSL https://gist.githubusercontent.com/alexlovelltroy/96bfc8bb6f59c0845617a0dc659871de/raw | bash
+[Install]
+WantedBy=multi-user.target
 ```
 
-### Review Installed Containers
+> [!NOTE]
+> `minio` makes some network assumptions in this file. Change it accordingly to fit your setup or use case.
 
-The post-install script for the RPM pulls all the official containers from the github container registry and stores them for use later.  You can review them with `podman`.
+### container registry
 
-```bash
-sudo podman images
+For our OCI container registry, we use the standard docker registry.  Once again, deployed as a quadlet.
+
+```yaml
+# registry.container
+
+[Unit]
+Description=Image OCI Registry
+After=network-online.target
+Requires=network-online.target
+
+[Container]
+ContainerName=registry
+HostName=registry
+Image=docker.io/library/registry:latest
+Volume=/data/oci:/var/lib/registry:Z
+PublishPort=5000:5000
+
+[Service]
+TimeoutStartSec=0
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+
 ```
 
-### Start OpenCHAMI
+### Webserver for boot artifacts
 
-Even though OpenCHAMI runs as a collection of containers, the podman integration with systemd allows us to start, stop, and trace OpenCHAMI as a set of dependent services through the `openchami.target` unit.
+We expose our NFS directory over https as well to make it easy to serve boot artifacts.
+
+```yaml
+# nginx.container
+[Unit]
+Description=Serve /srv/nfs over HTTP
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+ContainerName=nginx
+Image=docker.io/library/nginx:1.28-alpine
+Volume=/srv/nfs:/usr/share/nginx/html:Z
+PublishPort=80:80
+
+[Service]
+TimeoutStartSec=0
+Restart=always
+```
+
+### Reload systemd units to pick up the changes and start the services
 
 ```bash
-sudo systemctl start openchami.target
-sudo systemctl list-dependencies openchami.target
+sudo systemctl daemon-reload
+sudo systemctl start minio.service
+sudo systemctl start registry.service
+sudo systemctl start nginx.service
 ```

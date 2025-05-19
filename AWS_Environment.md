@@ -4,9 +4,9 @@ For this tutorial, you will be provided with your own EC2 instance and ssh key f
 
 ## Instance Information
 
-In order to run multiple compute nodes as VMs inside your instance, you will need plenty of RAM.  We've found that at least 4G per guest is necessary.  It's possible to oversubscribe the instances, but performance suffers.  We chose t2.2xlarge instances to optimize for RAM and cost. 
+In order to run multiple compute nodes as VMs inside your instance, you will need plenty of RAM.  We've found that at least 4G per guest is necessary.  It's possible to oversubscribe the instances, but performance suffers.  We chose c5.metal instances to optimize for RAM and cost.
 
-In addition, while the aarch (Graviton) instances are cheaper than the comparable x86 instances, not all of the software we rely on is confirmed to work on an ARM system.
+In addition, while the aarch (Graviton) instances are cheaper than the comparable x86 instances, not all of the software we rely on is confirmed to work on an ARM system.  Future versions of this tutorial will likely switch to cheaper ARM instances.
 
 ### Operating System (Rocky 9)
 
@@ -25,31 +25,34 @@ AWS offers the ability to stand up multiple instances based on the same template
 
 Just like OpenCHAMI, AWS provides teh ability to inject cloud-config data at runtime.  In the "Advanced details" section of the template or instance definition, you will find a text box for `User data`.  This is what we're using for the tutorial:
 
-    - **user-data:**
-      ```
-      #cloud-config
+**user-data:**
+```
+#cloud-config
 
-      packages:
-      - libvirt
-      - qemu-kvm
-      - virt-install
-      - virt-manager 
-      - dnsmasq
-      - podman
-      - buildah
-      - git
-      - vim
-      - ansible-core
-      - openssl
-      - nfs-utils
+packages:
+  - libvirt
+  - qemu-kvm
+  - virt-install
+  - virt-manager
+  - dnsmasq
+  - podman
+  - buildah
+  - git
+  - vim
+  - ansible-core
+  - openssl
+  - nfs-utils
 
-      runcmd:
-      - systemctl enable --now libvirtd
-      - systemctl start libvirtd
-      - newgrp libvirt
-      - usermod -aG libvirt rocky
-      - sudo growpart /dev/xvda 4
-      - sudo pvresize /dev/xvda4
-      - sudo lvextend -l +100%FREE /dev/rocky/lvroot
-      - sudo xfs_growfs /
-      ```
+# Post-package installation commands
+runcmd:
+  - dnf install -y epel-release
+  - dnf install -y s3cmd
+  - systemctl enable --now libvirtd
+  - newgrp libvirt
+  - usermod -aG libvirt rocky
+  - sudo growpart /dev/xvda 4
+  - sudo pvresize /dev/xvda4
+  - sudo lvextend -l +100%FREE /dev/rocky/lvroot
+  - sudo xfs_growfs /
+```
+\

@@ -1,0 +1,29 @@
+[Unit]
+Description=Minio S3
+After=local-fs.target network-online.target
+Wants=local-fs.target network-online.target
+
+[Container]
+ContainerName=minio-server
+Image=docker.io/minio/minio:latest
+# Volumes
+Volume=/data/minio:/data
+
+# Ports
+PublishPort=172.16.0.254:9090:9000
+PublishPort=172.16.0.254:9091:9001
+
+# Environemnt Variables
+Environment=MINIO_ROOT_USER=admin
+Environment=MINIO_ROOT_PASSWORD=admin123
+
+# Command to run in container
+Exec=server /data --console-address :9001
+
+[Service]
+Restart=always
+ExecStartPost=podman exec minio-server bash -c 'until curl -sI http://localhost:9000 > /dev/null; do sleep 1; done; mc alias set local http://localhost:9000 admin admin123; mc mb local/efi; mc mb local/boot-images;mc anonymous set download local/efi;mc anonymous set download local/boot-images'
+
+[Install]
+# Start by default on boot
+WantedBy=multi-user.target default.target
