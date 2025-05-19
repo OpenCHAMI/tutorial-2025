@@ -26,7 +26,11 @@ To make things easier for the tutorial, we have created a [bash script](https://
 1. verifies the signature
 1. installs the RPM
 
+It is recommended to review the [Instance Preparation](https://github.com/OpenCHAMI/tutorial-2025/blob/main/Instance_Preparation.md) guide before proceeding.
+
 ## Install Command
+
+If you followed the [Instance Preparation](https://github.com/OpenCHAMI/tutorial-2025/blob/main/Instance_Preparation.md) guide, then run the following command in `/opt/workdir`.
 
 ```bash
 curl -fsSL https://gist.githubusercontent.com/alexlovelltroy/96bfc8bb6f59c0845617a0dc659871de/raw | bash
