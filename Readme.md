@@ -23,7 +23,13 @@ OpenCHAMI can be managed via Kubernetes, Docker Compose, and Podman Quadlets.  T
 
 * OpenCHAMI Installation is covered by [OpenCHAMI_Installation.md](OpenCHAMI_Installation.md)
 
-### 3. Discover Nodes and Set Configuration
+### 3. Simulated HPC Nodes
+
+Testing system management without physical nodes presents significant challenges.  Rather than expose the complexity of sourcing and configuring hardware as a prerequisite, we will use a recipe for virtualizing a network and set of diskless nodes using libvirt.  Using the `c5.metal` instance type allows us to leverage the kernel virtualization engine without emulation.  Students will learn the libvirt toolset and they apply it to create and manage diskless compute nodes.
+
+* Libvirt-based Virtual Nodes are covered by [Virtual_Compute_Nodes.md](Virtual_Compute_Nodes.md)
+
+### 4. Discover Nodes and Set Configuration
 
 In a normal OpenCHAMI installation, we would use Magellan to discover our BMCs on a known BMC network.  With libvirt, we need to fake the discovery process by providing inventory information directly through the ochami commandline tool.
 
@@ -32,13 +38,7 @@ In a normal OpenCHAMI installation, we would use Magellan to discover our BMCs o
 * Configuring boot parameters is covered in [boot.md](boot.md)
 * Adding cloud-init parameters for post-boot configuration is covered in [cloud-init.md](cloud-init.md)
 
-### 3. Simulated HPC Nodes
-
-Testing system management without physical nodes presents significant challenges.  Rather than expose the complexity of sourcing and configuring hardware as a prerequisite, we will use a recipe for virtualizing a network and set of diskless nodes using libvirt.  Using the `c5.metal` instance type allows us to leverage the kernel virtualization engine without emulation.  Students will learn the libvirt toolset and they apply it to create and manage diskless compute nodes.
-
-* Libvirt-based Virtual Nodes are covered by [Virtual_Compute_Nodes.md](Virtual_Compute_Nodes.md)
-
-### 4. OpenCHAMI Management Use Cases
+### 5. OpenCHAMI Management Use Cases
 
 Using APIs, students will use the OpenCHAMI services to create and manage a virtual HPC system.  This involves:
 
