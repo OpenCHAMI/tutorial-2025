@@ -15,7 +15,7 @@ The tutorial is organized into four parts.  Each part starts with slides and edu
 
 In a real HPC system, you'll certainly use automation to create your head node(s) to run OpenCHAMI.  For this tutorial, the student will directly interact with Podman Quadlets to create services and configurations to set up a head node that can not only control an HPC system, but also act as a virtualization platform for diskless HPC nodes.
 
-* Head Node Preparation is covered by [Instance_Presentation.md](Instance_Preparation.md)
+* Head Node Preparation is covered by [Instance_Preparation.md](Instance_Preparation.md)
 
 ### 2. OpenCHAMI Installation
 
@@ -61,8 +61,6 @@ Using APIs, students will use the OpenCHAMI services to create and manage a virt
    - [ ] Create example cloud-config files for students to use. (in this repo?)
 4. Students should be able to configure three nodes as front-end, compute, and io with different configurations via groups
 5. Students should be able to create a new kubernetes image and switch from slurm to kubernetes via reboot of a node
-
-
 
 
 # Notes
