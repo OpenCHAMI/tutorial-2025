@@ -150,6 +150,14 @@ We should get:
 
 Voilà!
 
+> [!TIP]
+> If you receive an error related to TLS when runing `ochami bss status`, then try re-running `acme-deploy` and restarting the `haproxy` service.
+>
+> ```bash
+> systemctl restart acme-deploy
+> systemctl restart haproxy
+> ```
+
 
 ## Generating Authentication Token
 

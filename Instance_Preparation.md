@@ -222,3 +222,7 @@ sudo systemctl start minio.service
 sudo systemctl start registry.service
 sudo systemctl start nginx.service
 ```
+
+# What's Next?
+
+Next, head on over to the [OpenCHAMI Installation Guide](https://github.com/OpenCHAMI/tutorial-2025/blob/main/OpenCHAMI_Installation.md).
