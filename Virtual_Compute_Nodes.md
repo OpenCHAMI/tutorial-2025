@@ -29,18 +29,6 @@ sudo virsh net-autostart openchami-net
 ## Virtual Compute Node Startup
 
 Create virtual diskless compute nodes using [virsh](https://www.libvirt.org/index.html)
-```bash
-sudo virt-install --name compute1 \
-   --memory 4096 --vcpus 1 \
-   --disk none \
-   --pxe \
-   --os-variant generic \
-   --mac '52:54:00:be:ef:01' \
-   --network network:openchami-net,model=virtio \
-   --boot network,hd
-```
-
-
 
 ```
 sudo virt-install \
