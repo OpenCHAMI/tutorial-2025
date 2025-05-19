@@ -8,9 +8,10 @@ For our tutorial, we leverage a hypervisor which is built-in to the Linux Kernel
 
 ## Libvirt Networking
 
-In order to establish networking for the virtual nodes, we need to define a bridge network with NAT so each compute node can contact the OpenCHAMI services on the node as well as access remote resouces for package updates.  Since OpenCHAMI offers it's own dhcp server, we do not include a DHCP server as we create the network.
+In order to establish networking for the virtual nodes, we need to define a bridge network with NAT so each compute node can contact the OpenCHAMI services on the node as well as access remote resouces for package updates.  Since OpenCHAMI offers it's own DHCP server, we do not include a DHCP server as we create the network.
 
 Create the internal network:
+
 ```
 cat <<EOF > openchami-net.xml
 <network>
@@ -24,11 +25,14 @@ EOF
 sudo virsh net-define openchami-net.xml
 sudo virsh net-start openchami-net
 sudo virsh net-autostart openchami-net
+
+> [!NOTE]
+> If you followed the [OpenCHAMI Installation](https://github.com/OpenCHAMI/tutorial-2025/blob/main/OpenCHAMI_Installation.md) guide, then the internal network should already be created and this step is not necessary.
 ```
 
 ## Virtual Compute Node Startup
 
-Create virtual diskless compute nodes using [virsh](https://www.libvirt.org/index.html)
+Create virtual diskless compute nodes using [virsh](https://www.libvirt.org/index.html).
 
 ```
 sudo virt-install \
