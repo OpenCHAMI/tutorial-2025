@@ -90,7 +90,7 @@ nodes:
       ip_addr: 172.16.0.1
 ```
 
-Create a directory for putting our cluster configuration data into and copy the contents of (nodes.yaml)[nodes.yaml] there:
+Create a directory for putting our cluster configuration data into and copy the contents of [nodes.yaml](nodes.yaml) there:
 
 ```bash
 mkdir -p /opt/workdir/nodes
