@@ -404,7 +404,7 @@ Output:
     - '--tls-verify=false'
   ```
 
-- Besides pushing the OCI image to the registry, this image will also get pushed to S3 as a SquashFS image at `http://172.16.0.254:9000/boot-images/compute/base/:
+- Besides pushing the OCI image to the registry, this image will also get pushed to S3 as a SquashFS image at `http://172.16.0.254:9090/boot-images/compute/base/:
 
   ```yaml
   name: 'compute-base'

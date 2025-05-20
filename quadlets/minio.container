@@ -10,7 +10,7 @@ Image=docker.io/minio/minio:latest
 Volume=/data/minio:/data
 
 # Ports
-PublishPort=172.16.0.254:9090:9000
+PublishPort=172.16.0.254:9090:9090
 PublishPort=172.16.0.254:9091:9001
 
 # Environemnt Variables
@@ -22,7 +22,7 @@ Exec=server /data --console-address :9001
 
 [Service]
 Restart=always
-ExecStartPost=podman exec minio-server bash -c 'until curl -sI http://localhost:9000 > /dev/null; do sleep 1; done; mc alias set local http://localhost:9000 admin admin123; mc mb local/efi; mc mb local/boot-images;mc anonymous set download local/efi;mc anonymous set download local/boot-images'
+ExecStartPost=podman exec minio-server bash -c 'until curl -sI http://localhost:9090 > /dev/null; do sleep 1; done; mc alias set local http://localhost:9090 admin admin123; mc mb local/efi; mc mb local/boot-images;mc anonymous set download local/efi;mc anonymous set download local/boot-images'
 
 [Install]
 # Start by default on boot

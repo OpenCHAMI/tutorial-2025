@@ -105,7 +105,7 @@ sudo virsh net-autostart openchami-net
 
 **Add the demo hostname to /etc/hosts so that all the certs and urls work**
    ```bash
-   echo "127.0.0.1 demo.openchami.cluster" | sudo tee -a /etc/hosts > /dev/null
+   echo "172.16.0.254 demo.openchami.cluster" | sudo tee -a /etc/hosts > /dev/null
    ```
 
 
@@ -155,7 +155,7 @@ Exec=server /data --console-address :9001
 
 [Service]
 Restart=always
-ExecStartPost=podman exec minio-server bash -c 'until curl -sI http://localhost:9000 > /dev/null; do sleep 1; done; mc alias set local http://localhost:9000 admin admin123; mc mb local/efi; mc mb local/boot-images;mc anonymous set download local/efi;mc anonymous set download local/boot-images'
+ExecStartPost=podman exec minio-server bash -c 'until curl -sI http://localhost:9090 > /dev/null; do sleep 1; done; mc alias set local http://localhost:9090 admin admin123; mc mb local/efi; mc mb local/boot-images;mc anonymous set download local/efi;mc anonymous set download local/boot-images'
 
 [Install]
 WantedBy=multi-user.target

@@ -59,7 +59,7 @@ Create `/opt/workdir/nodes/boot-debug.yaml`:
 ```yaml
 kernel: 'http://172.16.0.254:9090/boot-images/efi-images/compute/debug/vmlinuz-5.14.0-503.38.1.el9_5.x86_64'
 initrd: 'http://172.16.0.254:9090/boot-images/efi-images/compute/debug/initramfs-5.14.0-503.38.1.el9_5.x86_64.img'
-params: 'nomodeset ro root=live:http://172.16.0.254:9090/boot-images/compute/debug/rocky9.5-compute-debug-9.5 ip=dhcp overlayroot=tmpfs overlayroot_cfgdisk=disabled apparmor=0 selinux=0 console=tty0 console=ttyS0,115200 ip6=off cloud-init=disabled'
+params: 'nomodeset ro root=live:http://172.16.0.254:9090/boot-images/compute/debug/rocky9.5-compute-debug-9.5 ip=dhcp overlayroot=tmpfs overlayroot_cfgdisk=disabled apparmor=0 selinux=0 console=ttyS0,115200 ip6=off cloud-init=enabled ds=nocloud-net;s=http://172.16.0.254:8081/cloud-init'
 macs:
   - 52:54:00:be:ef:01
   - 52:54:00:be:ef:02
@@ -114,14 +114,14 @@ The output should be:
       "52:54:00:be:ef:04",
       "52:54:00:be:ef:05"
     ],
-    "params": "nomodeset ro root=live:http://172.16.0.254:9090/boot-images/compute/debug/rocky9.5-compute-debug-9.5 ip=dhcp overlayroot=tmpfs overlayroot_cfgdisk=disabled apparmor=0 selinux=0 console=tty0 console=ttyS0,115200 ip6=off cloud-init=disabled"
+    "params": "nomodeset ro root=live:http://172.16.0.254:9090/boot-images/compute/debug/rocky9.5-compute-debug-9.5 ip=dhcp overlayroot=tmpfs overlayroot_cfgdisk=disabled apparmor=0 selinux=0 console=ttyS0,115200 ip6=off cloud-init=enabled ds=nocloud-net;s=http://172.16.0.254:8081/cloud-init",
   }
 ]
 ```
 
 We should now be ready to boot the image!
 
-## Reboot Compute VM into Debug Image
+## Boot Compute VM into Debug Image
 
 Boot the first compute node into the debug image, following the console:
 
@@ -139,6 +139,7 @@ sudo virt-install \
   --boot network,hd \
   --virt-type kvm
 ```
+
 
 
 We should see our IP address get assigned, kernel and initramfs downloaded, and SquashFS loaded:

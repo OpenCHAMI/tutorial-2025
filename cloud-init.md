@@ -61,6 +61,7 @@ nid-length: 2
 public-keys:
 - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKlJg9Jz/ILfDiiSuZvhtA0SSKuXSEYdbOaDfqGh+vFE rocky@tutorial-head.usrc"
 short-name: "nid"
+EOF
 ```
 
 # Prerequisite: Create an SSH Key
@@ -313,7 +314,7 @@ We can copy `/opt/workdir/nodes/boot-debug.yaml` to `/opt/workdir/nodes/boot-com
 ```yaml
 kernel: 'http://172.16.0.254:9090/boot-images/efi-images/compute/base/vmlinuz-5.14.0-503.38.1.el9_5.x86_64'
 initrd: 'http://172.16.0.254:9090/boot-images/efi-images/compute/base/initramfs-5.14.0-503.38.1.el9_5.x86_64.img'
-params: 'nomodeset ro root=live:http://172.16.0.254:9090/boot-images/compute/base/rocky9.5-compute-base-9.5 ip=dhcp overlayroot=tmpfs overlayroot_cfgdisk=disabled apparmor=0 selinux=0 console=tty0 console=ttyS0,115200 ip6=off cloud-init=enabled ds=nocloud-net;s=http://172.16.0.254:8081/cloud-init'
+params: 'nomodeset ro root=live:http://172.16.0.254:9090/boot-images/compute/base/rocky9.5-compute-base-9.5 ip=dhcp overlayroot=tmpfs overlayroot_cfgdisk=disabled apparmor=0 selinux=0 console=ttyS0,115200 ip6=off cloud-init=enabled ds=nocloud-net;s=http://172.16.0.254:8081/cloud-init'
 macs:
   - 52:54:00:be:ef:01
   - 52:54:00:be:ef:02
