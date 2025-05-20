@@ -14,6 +14,7 @@
     - [container registry](#container-registry)
     - [Webserver for boot artifacts](#webserver-for-boot-artifacts)
     - [Reload systemd units to pick up the changes and start the services](#reload-systemd-units-to-pick-up-the-changes-and-start-the-services)
+- [What's Next?](#whats-next)
 
 # Introduction
 
@@ -24,7 +25,6 @@ Once your AMI has launched as an instance, it will use the cloud-int process to 
 If you are using a tutorial instance from AWS, this is handled within the startup of the instance.  If not, you may run these commands on your own Rocky9 host to get it to the right state for the tutorial
 
 ```bash
-sudo dnf update -y
 sudo dnf install -y \
   epel-release \
   libvirt \
