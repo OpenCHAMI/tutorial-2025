@@ -5,7 +5,6 @@
 - [Instance Preparation](#instance-preparation)
   - [Contents](#contents)
 - [Introduction](#introduction)
-  - [Install Prerequisites for non-tutorial instances](#install-prerequisites-for-non-tutorial-instances)
   - [Set up the node filesystems](#set-up-the-node-filesystems)
   - [Set up the internal networks our containers expect and internal hostnames](#set-up-the-internal-networks-our-containers-expect-and-internal-hostnames)
     - [Update /etc/hosts](#update-etchosts)
@@ -19,36 +18,6 @@
 # Introduction
 
 Once your AMI has launched as an instance, it will use the cloud-int process to install all the OpenCHAMI prerequisites.  This will take about five minutes depending on the status of the internal AWS network and your instance type.  Checking the process list for dnf commands is a reasonable way to ascertain if the process is complete.  You can also check the cloud-init logs in `/var/log/cloud-init`.  Errors are often logged while cloud-init continues without failure.
-
-## Install Prerequisites for non-tutorial instances
-
-If you are using a tutorial instance from AWS, this is handled within the startup of the instance.  If not, you may run these commands on your own Rocky9 host to get it to the right state for the tutorial
-
-```bash
-sudo dnf install -y \
-  epel-release \
-  libvirt \
-  qemu-kvm \
-  virt-install \
-  virt-manager \
-  dnsmasq \
-  podman \
-  buildah \
-  git \
-  vim \
-  ansible-core \
-  openssl \
-  nfs-utils \
-  s3cmd
-```
-
-Start the libvirtd daemon and add the rocky user to a new libvirt group.
-
-```bash
-sudo systemctl enable --now libvirtd
-sudo newgrp libvirt
-sudo usermod -aG libvirt rocky
-```
 
 ## Set up the node filesystems
 
