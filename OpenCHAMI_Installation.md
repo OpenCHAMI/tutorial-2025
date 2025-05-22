@@ -32,14 +32,6 @@ To make things easier for the tutorial, we have created a [bash script](https://
 curl -fsSL https://gist.githubusercontent.com/alexlovelltroy/96bfc8bb6f59c0845617a0dc659871de/raw | bash
 ```
 
-## Review Installed Containers
-
-The post-install script for the RPM pulls all the official containers from the github container registry and stores them for use later.  You can review them with `podman`.
-
-```bash
-sudo podman images
-```
-
 ## Initialize and Trust the OpenCHAMI Certificate Auhority
 
 OpenCHAMI includes a minimal open source certificate authority from smallstep.  The included automation initialized the CA on first startup.  We can immediately download a certificate into the system trust bundle on the host for trusting all subsequent OpenCHAMI certificates.  Notably, the certificate authority features ACME for automatic certificate rotation.

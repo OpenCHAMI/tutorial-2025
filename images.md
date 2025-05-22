@@ -39,22 +39,14 @@ curl -L https://github.com/regclient/regclient/releases/latest/download/regctl-l
 /usr/local/bin/regctl registry set --tls disabled demo.openchami.cluster:5000
 ```
 
-## Install S3 Client
-
-Now, we need to setup our S3 client, `s3cmd`. Install it:
-
-```
-sudo dnf install s3cmd
-```
-
-Then, create the following file:
+## Configure S3 Client
 
 **`~/.s3cfg`**
 
-```
+```ini
 # Setup endpoint
-host_base = demo.openchami.cluster:9090
-host_bucket = demo.openchami.cluster:9090
+host_base = demo.openchami.cluster:9000
+host_bucket = demo.openchami.cluster:9000
 bucket_location = us-east-1
 use_https = False
 

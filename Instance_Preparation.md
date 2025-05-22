@@ -5,7 +5,6 @@
 - [Instance Preparation](#instance-preparation)
   - [Contents](#contents)
 - [Introduction](#introduction)
-  - [Install Prerequisites for non-tutorial instances](#install-prerequisites-for-non-tutorial-instances)
   - [Set up the node filesystems](#set-up-the-node-filesystems)
   - [Set up the internal networks our containers expect and internal hostnames](#set-up-the-internal-networks-our-containers-expect-and-internal-hostnames)
     - [Update /etc/hosts](#update-etchosts)
@@ -19,36 +18,6 @@
 
 Once your AMI has launched as an instance, it will use the cloud-int process to install all the OpenCHAMI prerequisites.  This will take about five minutes depending on the status of the internal AWS network and your instance type.  Checking the process list for dnf commands is a reasonable way to ascertain if the process is complete.  You can also check the cloud-init logs in `/var/log/cloud-init`.  Errors are often logged while cloud-init continues without failure.
 
-## Install Prerequisites for non-tutorial instances
-
-If you are using a tutorial instance from AWS, this is handled within the startup of the instance.  If not, you may run these commands on your own Rocky9 host to get it to the right state for the tutorial
-
-```bash
-sudo dnf update -y
-sudo dnf install -y \
-  epel-release \
-  libvirt \
-  qemu-kvm \
-  virt-install \
-  virt-manager \
-  dnsmasq \
-  podman \
-  buildah \
-  git \
-  vim \
-  ansible-core \
-  openssl \
-  nfs-utils \
-  s3cmd
-```
-
-Start the libvirtd daemon and add the rocky user to a new libvirt group.
-
-```bash
-sudo systemctl enable --now libvirtd
-sudo newgrp libvirt
-sudo usermod -aG libvirt rocky
-```
 
 ## Set up the node filesystems
 
@@ -111,17 +80,7 @@ sudo virsh net-autostart openchami-net
 
 ## Enable our non-openchami services
 
-For NFS, we need to update the /etc/exports file and then reload the kernel nfs daemon
 
-  - Create the `/etc/exports` file with the following contents to export the `/srv/nfs` directory for use by our compute nodes
-    ```bash
-    /srv/nfs *(ro,no_root_squash,no_subtree_check,noatime,async,fsid=0)
-    ```
-
-  - Reload the nfs daemon
-    ```bash
-    sudo modprobe -r nfsd && sudo modprobe nfsd
-    ```
 
 ### minio
 
@@ -143,7 +102,7 @@ Image=docker.io/minio/minio:latest
 Volume=/data/minio:/data:Z
 
 # Ports
-PublishPort=9090:9000
+PublishPort=9000:9000
 PublishPort=9091:9001
 
 # Environemnt Variables
@@ -192,33 +151,10 @@ WantedBy=multi-user.target
 
 ```
 
-### Webserver for boot artifacts
-
-We expose our NFS directory over https as well to make it easy to serve boot artifacts.
-
-```yaml
-# nginx.container
-[Unit]
-Description=Serve /srv/nfs over HTTP
-After=network-online.target
-Wants=network-online.target
-
-[Container]
-ContainerName=nginx
-Image=docker.io/library/nginx:1.28-alpine
-Volume=/srv/nfs:/usr/share/nginx/html:Z
-PublishPort=80:80
-
-[Service]
-TimeoutStartSec=0
-Restart=always
-```
-
 ### Reload systemd units to pick up the changes and start the services
 
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl start minio.service
 sudo systemctl start registry.service
-sudo systemctl start nginx.service
 ```
