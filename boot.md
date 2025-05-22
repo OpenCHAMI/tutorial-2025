@@ -10,7 +10,7 @@
   - [Adding New Boot Parameters](#adding-new-boot-parameters)
 - [Booting the Debug Image](#booting-the-debug-image)
   - [Configuring Debug Boot Parameters](#configuring-debug-boot-parameters)
-  - [Reboot Compute VM into Debug Image](#reboot-compute-vm-into-debug-image)
+  - [Boot Compute VM into Debug Image](#boot-compute-vm-into-debug-image)
 
 # Introduction
 
@@ -121,7 +121,7 @@ The output should be:
 
 We should now be ready to boot the image!
 
-## Reboot Compute VM into Debug Image
+## Boot Compute VM into Debug Image
 
 Boot the first compute node into the debug image, following the console:
 
@@ -136,10 +136,16 @@ sudo virt-install \
   --network network=openchami-net,model=virtio,mac=52:54:00:be:ef:01 \
   --graphics none \
   --console pty,target_type=serial \
-  --boot network,hd \
+  --boot loader=/usr/share/OVMF/OVMF_CODE.secboot.fd,loader.readonly=yes,loader.type=pflash,nvram.template=/var/lib/libvirt/qemu/nvram/compute.fd,loader_secure=no \
   --virt-type kvm
 ```
 
+> [!TIP]
+> You may need to copy files over for the above command to work.
+> 
+> ```bash
+> sudo cp /usr/share/OVMF/OVMF_VARS.fd /var/lib/libvirt/qemu/nvram/compute.fd
+> ```
 
 We should see our IP address get assigned, kernel and initramfs downloaded, and SquashFS loaded:
 
