@@ -5,7 +5,7 @@ Welcome to the OpenCHAMI hands-on tutorial! This guide walks you through buildin
 ---
 ## 📋 Prerequisites
 
-The cloud-based instance provided for this class is detailed in [AWS_Environment.md](/AWS_Environment.md) with the  your host system meets these requirements before you begin:
+The cloud-based instance provided for this class is detailed in [AWS_Environment.md](/AWS_Environment.md). Your instance must meet these requirements before you begin:
 
 - **OS & Kernel**:  
   - RHEL/CentOS/Rocky 9+ or equivalent  

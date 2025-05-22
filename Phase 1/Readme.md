@@ -1,20 +1,166 @@
-# Install OpenCHAMI Services
+# Phase I — Platform Setup
 
-## Contents
+1. **Instance Preparation**  
+   - Host packages, kernel modules, cgroups, bridge setup, nfs setup
+   - Deploy MinIO, nginx, and registry 
+   - Checkpoints: 
+     - `systemctl status minio`
+     - `systemctl status registry`
+2. **OpenCHAMI & Core Services** 
+   - Install OpenCHAMI RPMs
+   - Deploy internal Certificate Authority and import signing certificate  
+   - Checkpoints: 
+     - `ochami bss status`
+     - `systemctl list-dependencies openchami.target`
 
-- [Install OpenCHAMI Services](#install-openchami-services)
-  - [Contents](#contents)
-  - [Install Command](#install-command)
-  - [Review Installed Containers](#review-installed-containers)
-  - [Configure CoreDHCP](#configure-coredhcp)
-  - [Configure Cloud-Init](#configure-cloud-init)
-  - [Start OpenCHAMI](#start-openchami)
-  - [Trust Root CA Certificate](#trust-root-ca-certificate)
-  - [Autorenewal of Certificates](#autorenewal-of-certificates)
-  - [Install and Configure OpenCHAMI Client](#install-and-configure-openchami-client)
-    - [Installation](#installation)
-    - [Configuration](#configuration)
-  - [Generating Authentication Token](#generating-authentication-token)
+---
+
+## Set up the node filesystems
+
+Our tutorial uses NFS to share the system images for the diskless VMs.  We also use an S3 store and a container registry as part of our build process for system images.  They all need separate directories.
+
+Create `/opt/nfsroot` to serve our images
+
+```bash
+sudo mkdir /srv/nfs
+sudo chown rocky: /srv/nfs
+```
+
+Create a local directory for storing the container images
+
+```bash
+sudo mkdir -p /data/oci
+sudo chown -R rocky: /data/oci
+```
+
+Create a local directory for s3 access to images
+
+```bash
+sudo mkdir -p /data/minio
+sudo chown -R rocky: /data/minio
+```
+
+SELinux treats home directories specially. To avoid cgroups conflicting with SELinux enforcement, we set up a working directory outside our home directory.
+
+```bash
+sudo mkdir -p /opt/workdir
+sudo chown -R rocky: /opt/workdir
+cd /opt/workdir
+```
+
+## Set up the internal networks our containers expect and internal hostnames
+
+```bash
+cat <<EOF > openchami-net.xml
+<network>
+  <name>openchami-net</name>
+  <bridge name="virbr-openchami" />
+  <forward mode='nat'/>
+   <ip address="172.16.0.254" netmask="255.255.255.0">
+   </ip>
+</network>
+EOF
+
+sudo virsh net-define openchami-net.xml
+sudo virsh net-start openchami-net
+sudo virsh net-autostart openchami-net
+```
+
+### Update /etc/hosts
+
+**Add the demo hostname to /etc/hosts so that all the certs and urls work**
+   ```bash
+   echo "172.16.0.254 demo.openchami.cluster" | sudo tee -a /etc/hosts > /dev/null
+   ```
+
+
+## Enable our non-openchami services
+
+
+
+### minio
+
+For our S3 gateway, we use minio which we'll define as a quadlet and start.
+
+Like all the openchami services, we create a container definition in `/etc/containers/systemd/`.
+
+```yaml
+# minio.container
+[Unit]
+Description=Minio S3
+After=local-fs.target network-online.target
+Wants=local-fs.target network-online.target
+
+[Container]
+ContainerName=minio-server
+Image=docker.io/minio/minio:latest
+# Volumes
+Volume=/data/minio:/data:Z
+
+# Ports
+PublishPort=9000:9000
+PublishPort=9091:9001
+
+# Environemnt Variables
+Environment=MINIO_ROOT_USER=admin
+Environment=MINIO_ROOT_PASSWORD=admin123
+
+# Command to run in container
+Exec=server /data --console-address :9001
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### container registry
+
+For our OCI container registry, we use the standard docker registry.  Once again, deployed as a quadlet.
+
+```yaml
+# registry.container
+
+[Unit]
+Description=Image OCI Registry
+After=network-online.target
+Requires=network-online.target
+
+[Container]
+ContainerName=registry
+HostName=registry
+Image=docker.io/library/registry:latest
+Volume=/data/oci:/var/lib/registry:Z
+PublishPort=5000:5000
+
+[Service]
+TimeoutStartSec=0
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+
+```
+
+### Reload systemd units to pick up the changes and start the services
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl start minio.service
+sudo systemctl start registry.service
+```
+
+## Checkpoint
+
+```bash
+systemctl status minio
+systemctl status registry
+```
+
+---
+
+## Install OpenCHAMI
 
 Install the signed RPM from the [openchami/release](https://github.com/openchami/release) repository with verification using a [Public Gist](https://gist.github.com/alexlovelltroy/96bfc8bb6f59c0845617a0dc659871de).
 
@@ -23,8 +169,6 @@ Install the signed RPM from the [openchami/release](https://github.com/openchami
 1. downloads the rpm
 1. verifies the signature
 1. installs the RPM
-
-## Install Command
 
 ```bash
 curl -fsSL https://gist.githubusercontent.com/alexlovelltroy/96bfc8bb6f59c0845617a0dc659871de/raw | bash
@@ -162,3 +306,26 @@ export DEMO_ACCESS_TOKEN=$(sudo bash -lc 'gen_access_token')
 Note that `sudo` is needed because the containers are running as root and so if `sudo` is omitted, the containers will not be found.
 
 OpenCHAMI tokens last for an hour by default. Whenever one needs to be regenerated, run the above command.
+
+## Checkpoint
+
+```bash
+sudo systemctl list-dependencies openchami.target
+ochami bss status
+ochami smd status
+```
+should yeild:
+```bash
+openchami.target
+● ├─bss.service
+● ├─cloud-init-server.service
+● ├─coresmd.service
+● ├─haproxy.service
+● ├─hydra.service
+● ├─opaal-idp.service
+● ├─opaal.service
+● ├─postgres.service
+● ├─smd.service
+● └─step-ca.service
+{"bss-status":"running"}{"code":0,"message":"HSM is healthy"}
+```
