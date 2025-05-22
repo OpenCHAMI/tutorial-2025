@@ -5,6 +5,7 @@
 - [Boot Parameters](#boot-parameters)
   - [Contents](#contents)
 - [Introduction](#introduction)
+  - [Prerequisites](#prerequisites)
 - [Using `ochami` for Managing Boot Parameters](#using-ochami-for-managing-boot-parameters)
   - [Retrieving Boot Parameters](#retrieving-boot-parameters)
   - [Adding New Boot Parameters](#adding-new-boot-parameters)
@@ -19,6 +20,10 @@ SMD may know about the nodes so that DHCP can give them their IP address and poi
 The `ochami` CLI tool can do this for us. Let's take a look at some uses of it.
 
 Let's add some. We will be using the `ochami` CLI tool for this.
+
+## Prerequisites
+
+Make sure you have the `ochami` CLI installed and configued and that your access token is set and not expired. Refer to the [OpenCHAMI Installation guide](OpenCHAMI_Installation) for details on [installing the `ochami` tool](OpenCHAMI_Installation.md#install-and-configure-openchami-client) and [generating an access token](OpenCHAMI_Installation#generating-authentication-token).
 
 # Using `ochami` for Managing Boot Parameters
 
