@@ -236,7 +236,6 @@ ochami cloud-init node set -d '[{"id":"x1000c0s0b0n0","local_hostname":"compute1
 
 We can examine the merged cloud-init meta-data for a node with:
 
-
 ```bash
 ochami cloud-init node get meta-data x1000c0s0b0n0 | jq
 ```

@@ -5,6 +5,7 @@
 - [Discovery and SMD Population](#discovery-and-smd-population)
   - [Contents](#contents)
 - [Introduction](#introduction)
+  - [Prerequisites](#prerequisites)
   - [Dynamic Discovery Overview](#dynamic-discovery-overview)
   - [Static Discovery Overview](#static-discovery-overview)
 - [Anatomy of a Static Discovery File](#anatomy-of-a-static-discovery-file)
@@ -15,6 +16,10 @@
 In order for OpenCHAMI to be useful, the State Management Database (SMD) needs to be populated with node information. This can be done one of two ways: _static_ discovery via [the `ochami` CLI](https://github.com/OpenCHAMI/ochami) or _dynamic_ discovery via [the `magellan` CLI](https://github.com/OpenCHAMI/magellan).
 
 Static discovery is predictable and easily reproduceable, so we will use it in this tutorial.
+
+## Prerequisites
+
+Make sure you have the `ochami` CLI installed and configued and that your access token is set and not expired. Refer to the [OpenCHAMI Installation guide](OpenCHAMI_Installation) for details on [installing the `ochami` tool](OpenCHAMI_Installation.md#install-and-configure-openchami-client) and [generating an access token](OpenCHAMI_Installation#generating-authentication-token).
 
 ## Dynamic Discovery Overview
 

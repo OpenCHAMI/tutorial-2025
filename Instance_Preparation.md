@@ -13,7 +13,7 @@
     - [container registry](#container-registry)
     - [Webserver for boot artifacts](#webserver-for-boot-artifacts)
     - [Reload systemd units to pick up the changes and start the services](#reload-systemd-units-to-pick-up-the-changes-and-start-the-services)
-- [What's Next?](#whats-next)
+  - [What's Next?](#whats-next)
 
 # Introduction
 
@@ -73,9 +73,10 @@ sudo virsh net-autostart openchami-net
 ### Update /etc/hosts
 
 **Add the demo hostname to /etc/hosts so that all the certs and urls work**
-   ```bash
-   echo "127.0.0.1 demo.openchami.cluster" | sudo tee -a /etc/hosts > /dev/null
-   ```
+
+```bash
+echo "172.16.0.254 demo.openchami.cluster" | sudo tee -a /etc/hosts > /dev/null
+```
 
 
 ## Enable our non-openchami services
@@ -83,11 +84,13 @@ sudo virsh net-autostart openchami-net
 For NFS, we need to update the /etc/exports file and then reload the kernel nfs daemon
 
   - Create the `/etc/exports` file with the following contents to export the `/srv/nfs` directory for use by our compute nodes
+
     ```bash
     /srv/nfs *(ro,no_root_squash,no_subtree_check,noatime,async,fsid=0)
     ```
 
   - Reload the nfs daemon
+  
     ```bash
     sudo modprobe -r nfsd && sudo modprobe nfsd
     ```
@@ -124,7 +127,7 @@ Exec=server /data --console-address :9001
 
 [Service]
 Restart=always
-ExecStartPost=podman exec minio-server bash -c 'until curl -sI http://localhost:9000 > /dev/null; do sleep 1; done; mc alias set local http://localhost:9000 admin admin123; mc mb local/efi; mc mb local/boot-images;mc anonymous set download local/efi;mc anonymous set download local/boot-images'
+ExecStartPost=podman exec minio-server bash -c 'until curl -sI http://localhost:9090 > /dev/null; do sleep 1; done; mc alias set local http://localhost:9090 admin admin123; mc mb local/efi; mc mb local/boot-images;mc anonymous set download local/efi;mc anonymous set download local/boot-images'
 
 [Install]
 WantedBy=multi-user.target
@@ -192,6 +195,6 @@ sudo systemctl start registry.service
 sudo systemctl start nginx.service
 ```
 
-# What's Next?
+## What's Next?
 
 Next, head on over to the [OpenCHAMI Installation Guide](https://github.com/OpenCHAMI/tutorial-2025/blob/main/OpenCHAMI_Installation.md).

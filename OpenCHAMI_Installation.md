@@ -6,11 +6,9 @@
   - [Contents](#contents)
   - [Install Command](#install-command)
   - [Review Installed Containers](#review-installed-containers)
-  - [Configure CoreDHCP](#configure-coredhcp)
-  - [Configure Cloud-Init](#configure-cloud-init)
+  - [Initialize and Trust the OpenCHAMI Certificate Auhority](#initialize-and-trust-the-openchami-certificate-auhority)
   - [Start OpenCHAMI](#start-openchami)
-  - [Trust Root CA Certificate](#trust-root-ca-certificate)
-  - [Autorenewal of Certificates](#autorenewal-of-certificates)
+    - [Service Configuration](#service-configuration)
   - [Install and Configure OpenCHAMI Client](#install-and-configure-openchami-client)
     - [Installation](#installation)
     - [Configuration](#configuration)
@@ -161,7 +159,6 @@ Voilà!
 > systemctl restart acme-deploy
 > systemctl restart haproxy
 > ```
-
 
 ## Generating Authentication Token
 
