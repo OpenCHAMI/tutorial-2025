@@ -318,4 +318,59 @@ regctl repo ls demo.openchami.cluster:5000
 
 ## Build the debug image
 
-The images we've built so far don't contain any users.  We'll create those using cloud-init in a later step, but leaves us with no way to verify that the images are valid or to troubleshoot cloud-init
+The images we've built so far don't contain any users.  We'll create those using cloud-init in a later step, but leaves us with no way to verify that the images are valid or to troubleshoot cloud-init.  We'll need to create our own new layer.  Follow the examples above and review the [image-builder reference](images.md).
+
+
+- Use the base compute image as the parent:
+
+  ```yaml
+  parent: 'demo.openchami.cluster:5000/openchami/compute-base:9.5'
+  registry_opts_pull:
+    - '--tls-verify=false'
+  ```
+
+- Push the image to the `compute/debug` prefix:
+
+  ```yaml
+  s3_prefix: 'compute/debug/'
+  ```
+
+- Create a `testuser` user (password is `testuser`):
+
+  ```yaml
+  packages:
+    - shadow-utils
+
+  cmds:
+    - cmd: "useradd -mG wheel -p '$6$VHdSKZNm$O3iFYmRiaFQCemQJjhfrpqqV7DdHBi5YpY6Aq06JSQpABPw.3d8PQ8bNY9NuZSmDv7IL/TsrhRJ6btkgKaonT.' testuser"
+      loglevel: INFO
+  ```
+
+  This will be the user we will login to the console as.
+
+Build this image:
+
+```bash
+podman run --rm --device /dev/fuse -e S3_ACCESS=admin -e S3_SECRET=admin123 -v /opt/workdir/images/compute-debug.yaml:/home/builder/config.yaml ghcr.io/openchami/image-build:latest image-build --config config.yaml --log-level DEBUG
+```
+
+Once finished, we should see the debug image artifacts show up in S3:
+
+```bash
+s3cmd ls -Hr s3://boot-images/
+```
+
+```
+2025-04-22 15:48  1284M  s3://boot-images/compute/base/rocky9.5-compute-base-9.5
+2025-04-22 17:28  1284M  s3://boot-images/compute/debug/rocky9.5-compute-debug-9.5
+2025-04-22 15:48    75M  s3://boot-images/efi-images/compute/base/initramfs-5.14.0-503.38.1.el9_5.x86_64.img
+2025-04-22 15:48    13M  s3://boot-images/efi-images/compute/base/vmlinuz-5.14.0-503.38.1.el9_5.x86_64
+2025-04-22 17:28    75M  s3://boot-images/efi-images/compute/debug/initramfs-5.14.0-503.38.1.el9_5.x86_64.img
+2025-04-22 17:28    13M  s3://boot-images/efi-images/compute/debug/vmlinuz-5.14.0-503.38.1.el9_5.x86_64
+```
+
+We will be using the following pieces of the debug URLs for the boot setup in the next section:
+
+- `boot-images/compute/debug/rocky9.5-compute-debug-9.5`
+- `boot-images/efi-images/compute/debug/initramfs-5.14.0-503.38.1.el9_5.x86_64.img`
+- `boot-images/efi-images/compute/debug/vmlinuz-5.14.0-503.38.1.el9_5.x86_64`
