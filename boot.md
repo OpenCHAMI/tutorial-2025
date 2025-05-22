@@ -23,7 +23,9 @@ Let's add some. We will be using the `ochami` CLI tool for this.
 
 ## Prerequisites
 
-Make sure you have the `ochami` CLI installed and configued and that your access token is set and not expired. Refer to the [OpenCHAMI Installation guide](OpenCHAMI_Installation) for details on [installing the `ochami` tool](OpenCHAMI_Installation.md#install-and-configure-openchami-client) and [generating an access token](OpenCHAMI_Installation.md#generating-authentication-token).
+Make sure you have the `ochami` CLI installed and configued and that your access token is set and not expired. Refer to the [OpenCHAMI Installation guide](OpenCHAMI_Installation.md) for details on [installing the `ochami` tool](OpenCHAMI_Installation.md#install-and-configure-openchami-client) and [generating an access token](OpenCHAMI_Installation.md#generating-authentication-token).
+
+Also, make sure that you have gone through the [building and pushing images guide](images.md) as well as the [discovery guide](discovery.md) before proceeding.
 
 # Using `ochami` for Managing Boot Parameters
 
@@ -62,8 +64,8 @@ Let's test that we can actually boot a working image by booting the debug image 
 Create `/opt/workdir/nodes/boot-debug.yaml`:
 
 ```yaml
-kernel: 'http://172.16.0.254:9090/boot-images/efi-images/compute/debug/vmlinuz-5.14.0-503.38.1.el9_5.x86_64'
-initrd: 'http://172.16.0.254:9090/boot-images/efi-images/compute/debug/initramfs-5.14.0-503.38.1.el9_5.x86_64.img'
+kernel: 'http://172.16.0.254:9090/boot-images/efi-images/compute/debug/vmlinuz-5.14.0-503.40.1.el9_5.x86_64'
+initrd: 'http://172.16.0.254:9090/boot-images/efi-images/compute/debug/initramfs-5.14.0-503.40.1.el9_5.x86_64.img.img'
 params: 'nomodeset ro root=live:http://172.16.0.254:9090/boot-images/compute/debug/rocky9.5-compute-debug-9.5 ip=dhcp overlayroot=tmpfs overlayroot_cfgdisk=disabled apparmor=0 selinux=0 console=tty0 console=ttyS0,115200 ip6=off cloud-init=disabled'
 macs:
   - 52:54:00:be:ef:01
