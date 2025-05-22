@@ -225,7 +225,7 @@ merge_how:
   settings: [no_replace, recurse_list]
 users:
   - name: root
-    ssh_authorized_keys: ['ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKlJg9Jz/ILfDiiSuZvhtA0SSKuXSEYdbOaDfqGh+vFE rocky@tutorial-head.usrc']
+    ssh_authorized_keys: ['ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKlJg... rocky@tutorial.openchami.cluster']
 ```
 
 ## (_OPTIONAL_) Configuring Node-Specific Meta-Data
@@ -258,7 +258,7 @@ ochami cloud-init node get meta-data x1000c0s0b0n0 | jq
         "instance_id": "i-fd37994e",
         "local_ipv4": "172.16.0.1",
         "public_keys": [
-          "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKlJg9Jz/ILfDiiSuZvhtA0SSKuXSEYdbOaDfqGh+vFE rocky@tutorial-head.usrc"
+          "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKlJg... rocky@tutorial.openchami.cluster"
         ],
         "vendor_data": {
           "cloud_init_base_url": "http://172.16.0.254:8081/cloud-init",
