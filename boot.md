@@ -112,8 +112,8 @@ The output should be:
       },
       "user-data": null
     },
-    "initrd": "http://172.16.0.254:9090/boot-images/efi-images/compute/debug/initramfs-5.14.0-503.38.1.el9_5.x86_64.img",
-    "kernel": "http://172.16.0.254:9090/boot-images/efi-images/compute/debug/vmlinuz-5.14.0-503.38.1.el9_5.x86_64",
+    "initrd": "http://172.16.0.254:9090/boot-images/efi-images/compute/debug/initramfs-5.14.0-503.40.1.el9_5.x86_64.img.img",
+    "kernel": "http://172.16.0.254:9090/boot-images/efi-images/compute/debug/vmlinuz-5.14.0-503.40.1.el9_5.x86_64",
     "macs": [
       "52:54:00:be:ef:01",
       "52:54:00:be:ef:02",
@@ -124,6 +124,7 @@ The output should be:
     "params": "nomodeset ro root=live:http://172.16.0.254:9090/boot-images/compute/debug/rocky9.5-compute-debug-9.5 ip=dhcp overlayroot=tmpfs overlayroot_cfgdisk=disabled apparmor=0 selinux=0 console=tty0 console=ttyS0,115200 ip6=off cloud-init=disabled"
   }
 ]
+
 ```
 
 We should now be ready to boot the image!
