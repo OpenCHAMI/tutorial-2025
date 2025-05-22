@@ -114,14 +114,10 @@ Exec=server /data --console-address :9001
 
 [Service]
 Restart=always
-ExecStartPost=podman exec minio-server bash -c 'until curl -sI http://localhost:9090 > /dev/null; do sleep 1; done; mc alias set local http://localhost:9090 admin admin123; mc mb local/efi; mc mb local/boot-images;mc anonymous set download local/efi;mc anonymous set download local/boot-images'
 
 [Install]
 WantedBy=multi-user.target
 ```
-
-> [!NOTE]
-> `minio` makes some network assumptions in this file. Change it accordingly to fit your setup or use case.
 
 ### container registry
 

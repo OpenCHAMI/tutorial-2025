@@ -10,7 +10,7 @@
   - [Adding New Boot Parameters](#adding-new-boot-parameters)
 - [Booting the Debug Image](#booting-the-debug-image)
   - [Configuring Debug Boot Parameters](#configuring-debug-boot-parameters)
-  - [Reboot Compute VM into Debug Image](#reboot-compute-vm-into-debug-image)
+  - [Boot Compute VM into Debug Image](#reboot-compute-vm-into-debug-image)
 
 # Introduction
 
@@ -139,6 +139,13 @@ sudo virt-install \
   --boot network,hd \
   --virt-type kvm
 ```
+
+> [!TIP]
+> The default virt-install doesn't show anything during boot.
+> To get the full details of the bios, replace the standard `--boot` flag for `virt-install` to one that activates the console before the Linux Kernel through a bootloader
+> ```bash
+>  --boot loader=/usr/share/OVMF/OVMF_CODE.secboot.fd,loader.readonly=yes,loader.type=pflash,nvram.template=/var/lib/libvirt/qemu/nvram/compute.fd,loader_secure=no \
+> ```
 
 
 

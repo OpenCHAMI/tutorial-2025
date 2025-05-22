@@ -58,10 +58,14 @@ secret_key = admin123
 signature_v2 = False
 ```
 
-To make sure it works, list the S3 buckets:
+Create the two buckets we will need and make them public for downloads.
 
 ```bash
-s3cmd ls
+s3cmd mb s3://efi
+s3cmd setacl s3://efi --acl-public
+s3cmd mb s3://boot-images
+s3cmd setacl s3://boot-images --acl-public
+
 ```
 
 We should see the two that got created:
