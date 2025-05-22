@@ -23,7 +23,7 @@ Let's add some. We will be using the `ochami` CLI tool for this.
 
 ## Prerequisites
 
-Make sure you have the `ochami` CLI installed and configued and that your access token is set and not expired. Refer to the [OpenCHAMI Installation guide](OpenCHAMI_Installation) for details on [installing the `ochami` tool](OpenCHAMI_Installation.md#install-and-configure-openchami-client) and [generating an access token](OpenCHAMI_Installation#generating-authentication-token).
+Make sure you have the `ochami` CLI installed and configued and that your access token is set and not expired. Refer to the [OpenCHAMI Installation guide](OpenCHAMI_Installation) for details on [installing the `ochami` tool](OpenCHAMI_Installation.md#install-and-configure-openchami-client) and [generating an access token](OpenCHAMI_Installation.md#generating-authentication-token).
 
 # Using `ochami` for Managing Boot Parameters
 
