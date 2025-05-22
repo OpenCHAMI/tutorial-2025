@@ -112,7 +112,7 @@ The output should be:
       },
       "user-data": null
     },
-    "initrd": "http://172.16.0.254:9090/boot-images/efi-images/compute/debug/initramfs-5.14.0-503.40.1.el9_5.x86_64.img.img",
+    "initrd": "http://172.16.0.254:9090/boot-images/efi-images/compute/debug/initramfs-5.14.0-503.40.1.el9_5.x86_64.img",
     "kernel": "http://172.16.0.254:9090/boot-images/efi-images/compute/debug/vmlinuz-5.14.0-503.40.1.el9_5.x86_64",
     "macs": [
       "52:54:00:be:ef:01",
