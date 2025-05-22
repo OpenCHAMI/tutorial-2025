@@ -91,7 +91,7 @@ base-url: "http://172.16.0.254:8081/cloud-init"
 cluster-name: "demo"
 nid-length: 3
 public-keys:
-- "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKlJg9Jz/ILfDiiSuZvhtA0SSKuXSEYdbOaDfqGh+vFE rocky@tutorial-head.usrc"
+- "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKlJg9Jz/ILfDiiSuZvhtA0SSKuXSEYdbOaDfqGh+vFE rocky@tutorial.openchami.cluster"
 short-name: "nid"
 ```
 
@@ -137,7 +137,7 @@ The output should be:
   "cluster-name": "demo",
   "nid-length": 2,
   "public-keys": [
-    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKlJg9Jz/ILfDiiSuZvhtA0SSKuXSEYdbOaDfqGh+vFE rocky@tutorial-head.usrc"
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKlJg... rocky@tutorial.openchami.cluster"
   ],
   "short-name": "nid"
 }
@@ -152,17 +152,22 @@ Now, we need to set the cloud-init configuration for the `compute` group, which 
 First, let's create a templated cloud-config file. Create `ci-compute.yaml` with the following contents:
 
 ```yaml
-## template: jinja
-#cloud-config
-merge_how:
-- name: list
-  settings: [append]
-- name: dict
-  settings: [no_replace, recurse_list]
-users:
-  - name: root
-    ssh_authorized_keys: {{ ds.meta_data.instance_data.v1.public_keys }}
-disable_root: false
+- name: compute
+  description: "compute config"
+  file:
+    encoding: plain
+    content: |
+      ## template: jinja
+      #cloud-config
+      merge_how:
+      - name: list
+        settings: [append]
+      - name: dict
+        settings: [no_replace, recurse_list]
+      users:
+        - name: root
+          ssh_authorized_keys: {{ ds.meta_data.instance_data.v1.public_keys }}
+      disable_root: false
 ```
 
 Notice a few things:
