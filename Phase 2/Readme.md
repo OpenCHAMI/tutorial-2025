@@ -374,3 +374,69 @@ We will be using the following pieces of the debug URLs for the boot setup in th
 - `boot-images/compute/debug/rocky9.5-compute-debug-9.5`
 - `boot-images/efi-images/compute/debug/initramfs-5.14.0-503.38.1.el9_5.x86_64.img`
 - `boot-images/efi-images/compute/debug/vmlinuz-5.14.0-503.38.1.el9_5.x86_64`
+
+--
+
+
+# Managing Boot Parameters
+
+The `ochami` tool gives us a convenient interface to changing boot parameters through IaC.  We store the desired configuration in a file and apply it with a command. 
+
+> [!TIP]
+> `ochami` supports both `add` and `set`.  The difference is idempotency.  If using the `add` command, `bss` will reject replacing an existing boot configuration
+
+To set boot parameters, we need to pass:
+
+1. The identity of the node that they will be for (MAC address, name, or node ID number)
+1. At least one of:
+   1. URI to kernel file
+   2. URI to initrd file
+   3. Kernel command line arguments
+
+## Create the boot configuration
+
+Create `/opt/workdir/nodes/boot-debug.yaml`:
+
+```yaml
+kernel: 'http://172.16.0.254:9090/boot-images/efi-images/compute/debug/vmlinuz-5.14.0-503.38.1.el9_5.x86_64'
+initrd: 'http://172.16.0.254:9090/boot-images/efi-images/compute/debug/initramfs-5.14.0-503.38.1.el9_5.x86_64.img'
+params: 'nomodeset ro root=live:http://172.16.0.254:9090/boot-images/compute/debug/rocky9.5-compute-debug-9.5 ip=dhcp overlayroot=tmpfs overlayroot_cfgdisk=disabled apparmor=0 selinux=0 console=ttyS0,115200 ip6=off cloud-init=enabled ds=nocloud-net;s=http://172.16.0.254:8081/cloud-init'
+macs:
+  - 52:54:00:be:ef:01
+  - 52:54:00:be:ef:02
+  - 52:54:00:be:ef:03
+  - 52:54:00:be:ef:04
+  - 52:54:00:be:ef:05
+```
+## Set the boot configuration
+
+```bash
+ochami bss boot params set -f yaml -d @/opt/workdir/nodes/boot-debug.yaml
+```
+
+---
+# Booting the first virtual compute node
+
+Boot the first compute node into the debug image, following the console:
+
+```bash
+sudo virt-install \
+  --name compute1 \
+  --memory 4096 \
+  --vcpus 1 \
+  --disk none \
+  --pxe \
+  --os-variant centos-stream9 \
+  --network network=openchami-net,model=virtio,mac=52:54:00:be:ef:01 \
+  --graphics none \
+  --console pty,target_type=serial \
+  --boot network,hd \
+  --virt-type kvm
+```
+
+> [!TIP]
+> The default virt-install doesn't show anything during boot.
+> To get the full details of the bios, replace the standard `--boot` flag for `virt-install` to one that activates the console before the Linux Kernel through a bootloader
+> ```bash
+>  --boot loader=/usr/share/OVMF/OVMF_CODE.secboot.fd,loader.readonly=yes,loader.type=pflash,nvram.template=/var/lib/libvirt/qemu/nvram/compute.fd,loader_secure=no \
+> ```
