@@ -1,5 +1,12 @@
 For NFS, we need to update the /etc/exports file and then reload the kernel nfs daemon
 
+Create `/opt/nfsroot` to serve our images
+
+```bash
+sudo mkdir /srv/nfs
+sudo chown rocky: /srv/nfs
+```
+
   - Create the `/etc/exports` file with the following contents to export the `/srv/nfs` directory for use by our compute nodes
     ```bash
     /srv/nfs *(ro,no_root_squash,no_subtree_check,noatime,async,fsid=0)

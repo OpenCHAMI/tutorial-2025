@@ -10,8 +10,7 @@
      - `s3cmd ls -Hr s3://boot-images/`
      - `regctl tag ls demo.openchami.cluster:5000/demo/rocky-base`  
 5. **PXE Boot Configuration**  
-   - `boot.yaml`, BSS parameters, virt-install examples  
-   - Verify DHCP options & TFTP with `tcpdump`, `tftp`  
+   - `boot.yaml`, BSS parameters, virt-install examples    
    - Checkpoint: Successful serial console installer
 
 ---
@@ -21,6 +20,12 @@
 In order for OpenCHAMI to be useful, the State Management Database (SMD) needs to be populated with node information. This can be done one of two ways: _static_ discovery via [the `ochami` CLI](https://github.com/OpenCHAMI/ochami) or _dynamic_ discovery via [the `magellan` CLI](https://github.com/OpenCHAMI/magellan).
 
 Static discovery is predictable and easily reproduceable, so we will use it in this tutorial.
+
+## Libvirt introduction
+
+Libvirt is an open-source virtualization management toolkit that provides a unified interface for managing various virtualization technologies, including KVM/QEMU, Xen, VMware, LXC containers, and others. Through its standardized API and set of management tools, libvirt simplifies the tasks of defining, managing, and monitoring virtual machines and networks, regardless of the underlying hypervisor or virtualization platform.
+
+For our tutorial, we leverage a hypervisor which is built-in to the Linux Kernel. The kernel portion is called Kernel-based Virtual Machine (KVM) and the userspace component is included in QEMU.
 
 ## Dynamic Discovery Overview
 
@@ -34,7 +39,7 @@ When combined with DHCP dynamically handing out IPs, this process can be non-det
 
 Static discovery happens via `ochami` by giving it a static discovery file. "Discovery" is a bit of a misnomer as nothing is actually discovered. Instead, predefined node data is given to SMD which creates the necessary internal structures to boot nodes.
 
-## Anatomy of a Static Discovery File
+### Anatomy of a Static Discovery File
 
 `ochami` adds nodes to SMD through a yaml syntax (or json) that lists node descriptions throough a minimal set of node characteristics and a set of interface definitions.
 
@@ -440,3 +445,24 @@ sudo virt-install \
 > ```bash
 >  --boot loader=/usr/share/OVMF/OVMF_CODE.secboot.fd,loader.readonly=yes,loader.type=pflash,nvram.template=/var/lib/libvirt/qemu/nvram/compute.fd,loader_secure=no \
 > ```
+> This requires setting up a virtual "nvram" bootloader that must be managed in addition to the virtual instance itself.
+
+
+### Log in to your new compute node
+
+```
+Rocky Linux 9.5 (Blue Onyx)
+Kernel 5.14.0-503.38.1.el9_5.x86_64 on an x86_64
+
+nid0001 login:
+```
+
+Login with `testuser` for the username and password and check that we are on the live image:
+
+```bash
+[testuser@nid0001 ~]$ findmnt /
+TARGET SOURCE        FSTYPE  OPTIONS
+/      LiveOS_rootfs overlay rw,relatime,lowerdir=/run/rootfsbase,upperdir=/run/
+```
+
+Excellent! Play around a bit more and then logout. Use `Ctrl`+`]` to exit the Virsh console.

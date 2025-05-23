@@ -19,13 +19,6 @@
 
 Our tutorial uses NFS to share the system images for the diskless VMs.  We also use an S3 store and a container registry as part of our build process for system images.  They all need separate directories.
 
-Create `/opt/nfsroot` to serve our images
-
-```bash
-sudo mkdir /srv/nfs
-sudo chown rocky: /srv/nfs
-```
-
 Create a local directory for storing the container images
 
 ```bash

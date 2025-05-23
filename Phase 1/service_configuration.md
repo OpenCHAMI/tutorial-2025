@@ -1,6 +1,10 @@
 # Service Configuration
 
-The release RPM includes a set of configurations that make a few assumptions about your setup.  All of these can be changed before starting the system to work with your environment.  The release RPM puts all configuration files in /etc/openchami/
+The release RPM includes a set of configurations that make a few assumptions about your setup.  All of these can be changed before starting the system to work with your environment.  The release RPM puts all configuration files in `/etc/openchami/`.
+
+> [!NOTE]
+> Default usernames, passwords, and initialization secrets are included.  Don't use these for production.  They are very insecure.
+> 
 
 ## Environment variables
 

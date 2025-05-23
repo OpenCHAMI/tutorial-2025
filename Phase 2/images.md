@@ -120,7 +120,8 @@ The same as the base layer `options` key with the following keys added. Only the
 - `inventory`: the Ansible inventory file/directory
 - `vars`: YAML keys/values to set as additional Ansible variables
 
-## Examples
+---
+# image-builder Configuration Examples
 
 Let's examine two image configuration files.
 
