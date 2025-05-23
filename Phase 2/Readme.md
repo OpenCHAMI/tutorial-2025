@@ -349,9 +349,10 @@ regctl repo ls demo.openchami.cluster:5000
 The images we've built so far don't contain any users.  We'll create those using cloud-init in a later step, but leaves us with no way to verify that the images are valid or to troubleshoot cloud-init.  We'll need to create our own new layer.  Follow the examples above and review the [image-builder reference](images.md).
 
 
-- Use the base compute image as the parent:
+- Use the base compute image as the parent (don't forget to change the image name):
 
   ```yaml
+  name: 'compute-debug'
   parent: 'demo.openchami.cluster:5000/openchami/compute-base:9.5'
   registry_opts_pull:
     - '--tls-verify=false'
