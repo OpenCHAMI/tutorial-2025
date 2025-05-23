@@ -299,9 +299,9 @@ s3://boot-images/efi-images/compute/base/vmlinuz-5.14.0-503.38.1.el9_5.x86_64
 We can copy `/opt/workdir/nodes/boot-debug.yaml` to `/opt/workdir/nodes/boot-compute.yaml` and make modifications. We modify the `kernel`, `initrd`, and `params` to point to the boot artifacts listed in S3 above:
 
 ```yaml
-kernel: 'http://172.16.0.254:9090/boot-images/efi-images/compute/base/vmlinuz-5.14.0-503.38.1.el9_5.x86_64'
-initrd: 'http://172.16.0.254:9090/boot-images/efi-images/compute/base/initramfs-5.14.0-503.38.1.el9_5.x86_64.img'
-params: 'nomodeset ro root=live:http://172.16.0.254:9090/boot-images/compute/base/rocky9.5-compute-base-9.5 ip=dhcp overlayroot=tmpfs overlayroot_cfgdisk=disabled apparmor=0 selinux=0 console=ttyS0,115200 ip6=off cloud-init=enabled ds=nocloud-net;s=http://172.16.0.254:8081/cloud-init'
+kernel: 'http://172.16.0.254:9000/boot-images/efi-images/compute/base/vmlinuz-5.14.0-503.38.1.el9_5.x86_64'
+initrd: 'http://172.16.0.254:9000/boot-images/efi-images/compute/base/initramfs-5.14.0-503.38.1.el9_5.x86_64.img'
+params: 'nomodeset ro root=live:http://172.16.0.254:9000/boot-images/compute/base/rocky9.5-compute-base-9.5 ip=dhcp overlayroot=tmpfs overlayroot_cfgdisk=disabled apparmor=0 selinux=0 console=ttyS0,115200 ip6=off cloud-init=enabled ds=nocloud-net;s=http://172.16.0.254:8081/cloud-init'
 macs:
   - 52:54:00:be:ef:01
   - 52:54:00:be:ef:02
@@ -360,6 +360,6 @@ Configuring (net0 52:54:00:be:ef:01)...... ok
 tftp://172.16.0.254:69/config.ipxe... ok
 Booting from http://172.16.0.254:8081/boot/v1/bootscript?mac=52:54:00:be:ef:01
 http://172.16.0.254:8081/boot/v1/bootscript... ok
-http://172.16.0.254:9090/boot-images/efi-images/compute/base/vmlinuz-5.14.0-503.38.1.el9_5.x86_64... ok
-http://172.16.0.254:9090/boot-images/efi-images/compute/base/initramfs-5.14.0-503.38.1.el9_5.x86_64.img... ok
+http://172.16.0.254:9000/boot-images/efi-images/compute/base/vmlinuz-5.14.0-503.38.1.el9_5.x86_64... ok
+http://172.16.0.254:9000/boot-images/efi-images/compute/base/initramfs-5.14.0-503.38.1.el9_5.x86_64.img... ok
 ```

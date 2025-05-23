@@ -185,7 +185,7 @@ options:
     - '--tls-verify=false'
 
   # Publish SquashFS image to local S3
-  publish_s3: 'http://demo.openchami.cluster:9090'
+  publish_s3: 'http://demo.openchami.cluster:9000'
   s3_prefix: 'compute/base/'
   s3_bucket: 'boot-images'
 
@@ -324,7 +324,7 @@ Output:
     - '--tls-verify=false'
   ```
 
-- Besides pushing the OCI image to the registry, this image will also get pushed to S3 as a SquashFS image at `http://172.16.0.254:9090/boot-images/compute/base/:
+- Besides pushing the OCI image to the registry, this image will also get pushed to S3 as a SquashFS image at `http://172.16.0.254:9000/boot-images/compute/base/:
 
   ```yaml
   name: 'compute-base'
@@ -332,7 +332,7 @@ Output:
     - '9.5'
   ```
   ```yaml
-  publish_s3: 'http://172.16.0.254:9090'
+  publish_s3: 'http://172.16.0.254:9000'
   s3_prefix: 'compute/base/'
   s3_bucket: 'boot-images'
   ```
@@ -359,8 +359,8 @@ INFO - parent : demo.openchami.cluster:5000/openchami/rocky-base:9.5
 INFO - proxy :
 INFO - name : compute-base
 INFO - publish_local : False
-INFO - publish_s3 : http://172.16.0.254:9090
-INFO - s3 endpoint : http://172.16.0.254:9090
+INFO - publish_s3 : http://172.16.0.254:9000
+INFO - s3 endpoint : http://172.16.0.254:9000
 INFO - s3_prefix : compute/base/
 INFO - s3_bucket : boot-images
 INFO - publish_registry : demo.openchami.cluster:5000/openchami

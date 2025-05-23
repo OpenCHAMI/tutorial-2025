@@ -57,7 +57,7 @@ Let's test that we can actually boot a working image by booting the debug image 
 Create `/opt/workdir/nodes/boot-debug.yaml`:
 
 ```yaml
-kernel: 'http://172.16.0.254:9090/boot-images/efi-images/compute/debug/vmlinuz-5.14.0-503.38.1.el9_5.x86_64'
+kernel: 'http://172.16.0.254:9000/boot-images/efi-images/compute/debug/vmlinuz-5.14.0-503.38.1.el9_5.x86_64'
 initrd: 'http://172.16.0.254:9090/boot-images/efi-images/compute/debug/initramfs-5.14.0-503.38.1.el9_5.x86_64.img'
 params: 'nomodeset ro root=live:http://172.16.0.254:9090/boot-images/compute/debug/rocky9.5-compute-debug-9.5 ip=dhcp overlayroot=tmpfs overlayroot_cfgdisk=disabled apparmor=0 selinux=0 console=ttyS0,115200 ip6=off cloud-init=enabled ds=nocloud-net;s=http://172.16.0.254:8081/cloud-init'
 macs:
