@@ -163,6 +163,8 @@ Install the signed RPM from the [openchami/release](https://github.com/openchami
 1. verifies the signature
 1. installs the RPM
 
+Run the command below in the `/opt/workdir` directory.
+
 ```bash
 curl -fsSL https://gist.githubusercontent.com/alexlovelltroy/96bfc8bb6f59c0845617a0dc659871de/raw | bash
 ```
@@ -199,7 +201,7 @@ systemctl list-dependencies openchami.target
 
 ### Service Configuration
 
-The OpenCHAMI release rpm is created with sensible default configurations for this tutorial and all configuration files are included in the `/etc/openchami` directory.  To understand each one in detail, review the [service_configuration](service_configuration.md) instructions
+The OpenCHAMI release RPM is created with sensible default configurations for this tutorial and all configuration files are included in the `/etc/openchami` directory.  To understand each one in detail, review the [service_configuration](service_configuration.md) instructions
 
 ## Install and Configure OpenCHAMI Client
 
@@ -307,7 +309,7 @@ sudo systemctl list-dependencies openchami.target
 ochami bss status
 ochami smd status
 ```
-should yeild:
+should yield:
 ```bash
 openchami.target
 ● ├─bss.service
