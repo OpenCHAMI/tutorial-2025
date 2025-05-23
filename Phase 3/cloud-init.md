@@ -363,3 +363,9 @@ http://172.16.0.254:8081/boot/v1/bootscript... ok
 http://172.16.0.254:9000/boot-images/efi-images/compute/base/vmlinuz-5.14.0-503.38.1.el9_5.x86_64... ok
 http://172.16.0.254:9000/boot-images/efi-images/compute/base/initramfs-5.14.0-503.38.1.el9_5.x86_64.img... ok
 ```
+
+### Troubleshooting
+
+If the logs includes this, we've got trouble `8:37PM DBG IP address 10.89.2.1 not found for an xname in nodes`
+
+It means that our iptables has mangled the packet and we're not receiving correctly through the bridge.
