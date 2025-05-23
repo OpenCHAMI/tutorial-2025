@@ -221,7 +221,7 @@ s3cmd setpolicy public-read.json s3://boot-images \
     --host-bucket=172.16.0.254:9000
 ```
 
-We should see the two that got created:
+We should see the two that got created with `s3cmd ls`:
 
 ```
 2025-04-22 15:24  s3://boot-images
