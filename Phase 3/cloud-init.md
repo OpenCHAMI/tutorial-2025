@@ -50,28 +50,6 @@ We will be using the OpenCHAMI Cloud-Init server in this tutorial for node post-
 ochami cloud-init defaults get
 ```
 
-### Setting
-
-```bash
-ochami cloud-init defaults set -f yaml <<EOF
----
-base-url: "http://172.16.0.254:8081/cloud-init"
-cluster-name: "demo"
-nid-length: 2
-public-keys:
-- "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKlJg9Jz/ILfDiiSuZvhtA0SSKuXSEYdbOaDfqGh+vFE rocky@tutorial-head.usrc"
-short-name: "nid"
-EOF
-```
-
-# Prerequisite: Create an SSH Key
-
-Create an SSH key that will be placed into the running image by Cloud-Init (hit `Enter` for all prompts):
-
-```bash
-ssh-keygen -t ed25519
-```
-
 # Creating a Basic Cloud-Init Config
 
 Let's create a directory for storing our configuration:
@@ -91,15 +69,19 @@ base-url: "http://172.16.0.254:8081/cloud-init"
 cluster-name: "demo"
 nid-length: 3
 public-keys:
-- "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKlJg9Jz/ILfDiiSuZvhtA0SSKuXSEYdbOaDfqGh+vFE rocky@tutorial.openchami.cluster"
+- "<YOUR SSH KEY GOES HERE>"
 short-name: "nid"
 ```
 
-Replace the SSH key in `public-keys` to be your own that you created above. You can obtain it by:
+Replace the SSH key in `public-keys` to be your own that you created above. You can obtain it locally:
 
 ```bash
 cat ~/.ssh/id_ed25519.pub
 ```
+
+> [!TIP]
+> Did you know that github makes it easy to download your public ssh keys?
+> `https://github.com/$USERNAME.keys`
 
 Notice that we specify the following information:
 
@@ -149,7 +131,7 @@ Now, we need to set the cloud-init configuration for the `compute` group, which 
 
 ### Creating the Compute Group Cloud-Config File
 
-First, let's create a templated cloud-config file. Create `ci-compute.yaml` with the following contents:
+First, let's create a templated cloud-config file. Create `computes.yaml` with the following contents:
 
 ```yaml
 - name: compute
@@ -196,7 +178,7 @@ cat <<EOF | ochami cloud-init group set -l debug -f yaml
   description: "compute group cloud-config template"
   file:
     encoding: base64
-    content: $(base64 -w0 /opt/workdir/cloud-init/ci-compute.yaml)
+    content: $(base64 -w0 /opt/workdir/cloud-init/computes.yaml)
 EOF
 ```
 

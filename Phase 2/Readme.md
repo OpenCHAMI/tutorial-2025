@@ -171,7 +171,7 @@ curl -L https://github.com/regclient/regclient/releases/latest/download/regctl-l
 /usr/local/bin/regctl registry set --tls disabled demo.openchami.cluster:5000
 ```
 
-## Install and configure S3 Client
+### Install and configure S3 Client
 
 **`~/.s3cfg`**
 
@@ -197,7 +197,28 @@ s3cmd mb s3://efi
 s3cmd setacl s3://efi --acl-public
 s3cmd mb s3://boot-images
 s3cmd setacl s3://boot-images --acl-public
+```
 
+Set the policy to allow public downloads from minio's boot-images bucket
+
+**public-read.json**
+```json
+{
+  "Version":"2012-10-17",
+  "Statement":[
+    {
+      "Effect":"Allow",
+      "Principal":"*",
+      "Action":["s3:GetObject"],
+      "Resource":["arn:aws:s3:::boot-images/*"]
+    }
+  ]
+}
+```
+```bash
+s3cmd setpolicy public-read.json s3://boot-images \
+    --host=172.16.0.254:9000 \
+    --host-bucket=172.16.0.254:9000
 ```
 
 We should see the two that got created:
@@ -206,6 +227,8 @@ We should see the two that got created:
 2025-04-22 15:24  s3://boot-images
 2025-04-22 15:24  s3://efi
 ```
+
+
 
 ---
 
@@ -312,7 +335,7 @@ regctl repo ls demo.openchami.cluster:5000
 ## Build the compute image
 
 ```bash
-podman run --rm --device /dev/fuse --network host -v /opt/workdir/images/compute.yaml:/home/builder/config.yaml ghcr.io/openchami/image-build:latest image-build --config config.yaml --log-level DEBUG
+podman run --rm --device /dev/fuse --network host -e S3_ACCESS=admin -e S3_SECRET=admin123 -v /opt/workdir/images/compute.yaml:/home/builder/config.yaml ghcr.io/openchami/image-build:latest image-build --config config.yaml --log-level DEBUG
 ```
 
 Verify that the image has been created and stored in the registry
@@ -374,12 +397,20 @@ s3cmd ls -Hr s3://boot-images/
 2025-04-22 17:28    13M  s3://boot-images/efi-images/compute/debug/vmlinuz-5.14.0-503.38.1.el9_5.x86_64
 ```
 
-We will be using the following pieces of the debug URLs for the boot setup in the next section:
+Make all images publicly downloadable
+
+```bash
+ s3cmd setacl --recursive s3://boot-images \
+   --acl-public \
+   --host=demo.openchami.cluster:9000 \
+   --host-bucket=demo.openchami.cluster:9000
+ ```
+
+We will be using the following pieces of the debug URLs for the boot setup in the next section.  Ensure that you read them from your own s3 output which may be different than it was at the time of writing.
 
 - `boot-images/compute/debug/rocky9.5-compute-debug-9.5`
-- `boot-images/efi-images/compute/debug/initramfs-5.14.0-503.38.1.el9_5.x86_64.img`
-- `boot-images/efi-images/compute/debug/vmlinuz-5.14.0-503.38.1.el9_5.x86_64`
-
+- `boot-images/efi-images/compute/debug/initramfs-<REPLACE WITH ACTUAL KERNEL VERSION>.el9_5.x86_64.img`
+- `boot-images/efi-images/compute/debug/vmlinuz-<REPLACE WITH ACTUAL KERNEL VERSION>.el9_5.x86_64`
 --
 
 
@@ -387,8 +418,7 @@ We will be using the following pieces of the debug URLs for the boot setup in th
 
 The `ochami` tool gives us a convenient interface to changing boot parameters through IaC.  We store the desired configuration in a file and apply it with a command. 
 
-> [!TIP]
-> `ochami` supports both `add` and `set`.  The difference is idempotency.  If using the `add` command, `bss` will reject replacing an existing boot configuration
+
 
 To set boot parameters, we need to pass:
 
@@ -399,6 +429,10 @@ To set boot parameters, we need to pass:
    3. Kernel command line arguments
 
 ## Create the boot configuration
+
+> [!TIP ]
+> Your file will not look like the one below due to differences in kernel versions over time.
+> Be sure to update with the output of `s3cmd ls` as appropriate
 
 Create `/opt/workdir/nodes/boot-debug.yaml`:
 
@@ -414,6 +448,9 @@ macs:
   - 52:54:00:be:ef:05
 ```
 ## Set the boot configuration
+
+> [!NOTE]
+> `ochami` supports both `add` and `set`.  The difference is idempotency.  If using the `add` command, `bss` will reject replacing an existing boot configuration
 
 ```bash
 ochami bss boot params set -f yaml -d @/opt/workdir/nodes/boot-debug.yaml
@@ -443,9 +480,13 @@ sudo virt-install \
 > The default virt-install doesn't show anything during boot.
 > To get the full details of the bios, replace the standard `--boot` flag for `virt-install` to one that activates the console before the Linux Kernel through a bootloader
 > ```bash
->  --boot loader=/usr/share/OVMF/OVMF_CODE.secboot.fd,loader.readonly=yes,loader.type=pflash,nvram.template=/var/lib/libvirt/qemu/nvram/compute.fd,loader_secure=no \
+>  --boot loader=/usr/share/OVMF/OVMF_CODE.secboot.fd,loader.readonly=yes,loader.type=pflash,nvram.template=/var/lib/libvirt/qemu/nvram/compute1.fd,loader_secure=no \
 > ```
 > This requires setting up a virtual "nvram" bootloader that must be managed in addition to the virtual instance itself.
+> Create the nvram with the following command:
+> ```bash
+>  sudo cp /usr/share/OVMF/OVMF_VARS.fd /var/lib/libvirt/qemu/nvram/compute1.fd
+> ```
 
 
 ### Log in to your new compute node
