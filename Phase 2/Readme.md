@@ -201,7 +201,7 @@ s3cmd setacl s3://boot-images --acl-public
 
 Set the policy to allow public downloads from minio's boot-images bucket
 
-**public-read.json**
+**public-read-boot.json**
 ```json
 {
   "Version":"2012-10-17",
@@ -215,8 +215,27 @@ Set the policy to allow public downloads from minio's boot-images bucket
   ]
 }
 ```
+
+**public-read-efi.json**
+```json
+{
+  "Version":"2012-10-17",
+  "Statement":[
+    {
+      "Effect":"Allow",
+      "Principal":"*",
+      "Action":["s3:GetObject"],
+      "Resource":["arn:aws:s3:::efi/*"]
+    }
+  ]
+}
+```
 ```bash
-s3cmd setpolicy public-read.json s3://boot-images \
+s3cmd setpolicy public-read-boot.json s3://boot-images \
+    --host=172.16.0.254:9000 \
+    --host-bucket=172.16.0.254:9000
+
+s3cmd setpolicy public-read-efi.json s3://efi \
     --host=172.16.0.254:9000 \
     --host-bucket=172.16.0.254:9000
 ```
@@ -398,15 +417,6 @@ s3cmd ls -Hr s3://boot-images/
 2025-04-22 17:28    13M  s3://boot-images/efi-images/compute/debug/vmlinuz-5.14.0-503.38.1.el9_5.x86_64
 ```
 
-Make all images publicly downloadable
-
-```bash
- s3cmd setacl --recursive s3://boot-images \
-   --acl-public \
-   --host=demo.openchami.cluster:9000 \
-   --host-bucket=demo.openchami.cluster:9000
- ```
-
 We will be using the following pieces of the debug URLs for the boot setup in the next section.  Ensure that you read them from your own s3 output which may be different than it was at the time of writing.
 
 - `boot-images/compute/debug/rocky9.5-compute-debug-9.5`
@@ -431,7 +441,7 @@ To set boot parameters, we need to pass:
 
 ## Create the boot configuration
 
-> [!TIP ]
+> [!TIP]
 > Your file will not look like the one below due to differences in kernel versions over time.
 > Be sure to update with the output of `s3cmd ls` as appropriate
 

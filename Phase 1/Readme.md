@@ -44,11 +44,12 @@ cd /opt/workdir
 ## Set up the internal networks our containers expect and internal hostnames
 
 ```bash
+sudo sysctl -w net.ipv4.ip_forward=1
 cat <<EOF > openchami-net.xml
 <network>
   <name>openchami-net</name>
   <bridge name="virbr-openchami" />
-  <forward mode='nat'/>
+  <forward mode='route'/>
    <ip address="172.16.0.254" netmask="255.255.255.0">
    </ip>
 </network>
