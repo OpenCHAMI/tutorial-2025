@@ -38,3 +38,8 @@ PublishPort=80:80
 TimeoutStartSec=0
 Restart=always
 ```
+
+### Import images from OCI to share with nfs
+
+[Import-image Script](https://github.com/OpenCHAMI/image-builder/blob/main/scripts/image-import.sh)
+
