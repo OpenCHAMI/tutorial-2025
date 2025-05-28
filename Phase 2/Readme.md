@@ -468,7 +468,7 @@ ochami bss boot params set -f yaml -d @/opt/workdir/nodes/boot-debug.yaml
 ```
 
 ---
-# Booting the first virtual compute node
+# Boot the compute node with the debug image
 
 Boot the first compute node into the debug image, following the console:
 
@@ -621,3 +621,216 @@ First, let's create a templated cloud-config file. Create `computes.yaml` with t
           ssh_authorized_keys: {{ ds.meta_data.instance_data.v1.public_keys }}
       disable_root: false
 ```
+
+### Setting the Cloud-Config File for the Compute Group
+
+Now, we need to set this configuration for the compute group. This can be a bit awkward because we have to embed the cloud-config file into a JSON or YAML payload wrapped by the group information. We could create a file for this, but we want to be able to easily modify the cloud-config file and re-set the config with ease.
+
+Thus, we will dynamically include the cloud-config file in the payload:
+
+```bash
+cat <<EOF | ochami cloud-init group set -l debug -f yaml
+---
+- name: compute
+  description: "compute group cloud-config template"
+  file:
+    encoding: base64
+    content: $(base64 -w0 /opt/workdir/cloud-init/computes.yaml)
+EOF
+```
+
+We can check that it got added with:
+
+```bash
+ochami cloud-init group get config compute
+```
+
+We should see the cloud-config file we created above print out.
+
+We can also check that the Jinja2 is rendering properly for a node. Let's see what the cloud-config would render to for our first compute node (x1000c0s0b0n0):
+
+```bash
+ochami cloud-init group render compute x1000c0s0b0n0
+```
+
+> [!NOTE]
+> This feature requires that impersonation is enabled with cloud-init. Check and make sure that the `IMPERSONATION` environment variable is set in `/etc/openchami/configs/openchami.env`.
+
+We should see the SSH key we created in the config:
+
+```yaml
+#cloud-config
+merge_how:
+- name: list
+  settings: [append]
+- name: dict
+  settings: [no_replace, recurse_list]
+users:
+  - name: root
+    ssh_authorized_keys: ['ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKlJg... rocky@demo.openchami.cluster']
+```
+
+## (_OPTIONAL_) Configuring Node-Specific Meta-Data
+
+If we wanted, we could configure node-specific meta-data.
+
+For instance, if we wanted to change the hostname of our first compute node from the default `nid01`, we could change it to `compute1` with:
+
+```bash
+ochami cloud-init node set -d '[{"id":"x1000c0s0b0n0","local_hostname":"compute1"}]'
+```
+
+## Checking the Cloud-Init Metadata
+
+We can examine the merged cloud-init meta-data for a node with:
+
+```bash
+ochami cloud-init node get meta-data x1000c0s0b0n0 | jq
+```
+
+```json
+[
+  {
+    "cluster-name": "demo",
+    "hostname": "nid01",
+    "instance-id": "i-fd37994e",
+    "instance_data": {
+      "v1": {
+        "instance_id": "i-fd37994e",
+        "local_ipv4": "172.16.0.1",
+        "public_keys": [
+          "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKlJg... rocky@demo.openchami.cluster"
+        ],
+        "vendor_data": {
+          "cloud_init_base_url": "http://172.16.0.254:8081/cloud-init",
+          "cluster_name": "demo",
+          "groups": {
+            "compute": {
+              "Description": "compute group cloud-config template"
+            }
+          },
+          "version": "1.0"
+        }
+      }
+    },
+    "local-hostname": "compute1"
+  }
+]
+```
+
+This merges the cluster default, group, and node-specific meta-data.
+
+If the node is a member of multiple groups, the order of the merging of those groups' configs can be seen by running:
+
+```bash
+ochami cloud-init node get vendor-data x1000c0s0b0n0
+```
+
+The result will be an `#include` directive followed by a list of URIs to each group cloud-config endpoint for each group the node is a member of:
+
+```
+#include
+http://172.16.0.254:8081/cloud-init/compute.yaml
+```
+
+So far, this compute node is only a member of the one group above.
+
+# Boot Using the Compute Image
+
+## Switching from the Debug Image to the Compute Image
+
+BSS still thinks our nodes are booting the debug image, so we need to tell it to boot our compute image.
+
+First, we will need to know the paths to the boot artifacts for the compute image, which we can query S3 for:
+
+```bash
+s3cmd ls -Hr s3://boot-images/ | awk '{print $4}' | grep base
+```
+
+We should see:
+
+```
+s3://boot-images/compute/base/rocky9.5-compute-base-9.5
+s3://boot-images/efi-images/compute/base/initramfs-5.14.0-503.38.1.el9_5.x86_64.img
+s3://boot-images/efi-images/compute/base/vmlinuz-5.14.0-503.38.1.el9_5.x86_64
+```
+
+We can copy `/opt/workdir/nodes/boot-debug.yaml` to `/opt/workdir/nodes/boot-compute.yaml` and make a few modifications. We need to modify the `kernel`, `initrd`, and `params` to point to the boot artifacts listed in S3 above:
+
+```yaml
+kernel: 'http://172.16.0.254:9000/boot-images/efi-images/compute/base/vmlinuz-5.14.0-503.38.1.el9_5.x86_64'
+initrd: 'http://172.16.0.254:9000/boot-images/efi-images/compute/base/initramfs-5.14.0-503.38.1.el9_5.x86_64.img'
+params: 'nomodeset ro root=live:http://172.16.0.254:9000/boot-images/compute/base/rocky9.5-compute-base-9.5 ip=dhcp overlayroot=tmpfs overlayroot_cfgdisk=disabled apparmor=0 selinux=0 console=ttyS0,115200 ip6=off cloud-init=enabled ds=nocloud-net;s=http://172.16.0.254:8081/cloud-init'
+macs:
+  - 52:54:00:be:ef:01
+  - 52:54:00:be:ef:02
+  - 52:54:00:be:ef:03
+  - 52:54:00:be:ef:04
+  - 52:54:00:be:ef:05
+```
+
+We should only have to change `debug` to `base` since the images we built before should be similar. Then, we can modify the boot parameters with:
+
+```bash
+ochami bss boot params set -f yaml -d @/opt/workdir/nodes/boot-compute.yaml
+```
+
+Double-check that the params were updated if needed:
+
+```bash
+ochami bss boot params get
+```
+
+## Booting the Compute Node
+
+Now that we have our compute base image, BSS configured to point to it, and Cloud-Init configured with the post-boot configuration, we are now ready to boot a node.
+
+Check that the boot parameters point to the base image with `ochami boot params get | jq`.
+
+Then, power cycle `compute1` and attach to the console to watch it boot:
+
+```bash
+sudo virsh destroy compute1
+sudo virsh start --console compute1
+```
+
+Just like with the debug image, we should see the node:
+
+1. Get its IP address (172.16.0.1)
+2. Download the iPXE bootloader binary from CoreSMD
+3. Download the `config.ipxe` script that chainloads the iPXE script from BSS (http://172.16.0.254:8081/boot/v1/bootscript?mac=52:54:00:be:ef:01)
+4. Download the kernel and initramfs in S3
+5. Boot into the image, running cloud-init
+
+```
+>>Start PXE over IPv4.
+  Station IP address is 172.16.0.1
+
+  Server IP address is 172.16.0.254
+  NBP filename is ipxe-x86_64.efi
+  NBP filesize is 1079296 Bytes
+ Downloading NBP file...
+
+  NBP file downloaded successfully.
+BdsDxe: loading Boot0001 "UEFI PXEv4 (MAC:525400BEEF01)" from PciRoot(0x0)/Pci(0x1,0x0)/Pci(0x0,0x0)/MAC(525400BEEF01,0x1)/IPv4(0.0.0.0,0x0,DHCP,0.0.0.0,0.0.0.0,0.0.0.0)
+BdsDxe: starting Boot0001 "UEFI PXEv4 (MAC:525400BEEF01)" from PciRoot(0x0)/Pci(0x1,0x0)/Pci(0x0,0x0)/MAC(525400BEEF01,0x1)/IPv4(0.0.0.0,0x0,DHCP,0.0.0.0,0.0.0.0,0.0.0.0)
+iPXE initialising devices...
+autoexec.ipxe... Not found (https://ipxe.org/2d12618e)
+
+
+
+iPXE 1.21.1+ (ge9a2) -- Open Source Network Boot Firmware -- https://ipxe.org
+Features: DNS HTTP HTTPS iSCSI TFTP VLAN SRP AoE EFI Menu
+Configuring (net0 52:54:00:be:ef:01)...... ok
+tftp://172.16.0.254:69/config.ipxe... ok
+Booting from http://172.16.0.254:8081/boot/v1/bootscript?mac=52:54:00:be:ef:01
+http://172.16.0.254:8081/boot/v1/bootscript... ok
+http://172.16.0.254:9000/boot-images/efi-images/compute/base/vmlinuz-5.14.0-503.38.1.el9_5.x86_64... ok
+http://172.16.0.254:9000/boot-images/efi-images/compute/base/initramfs-5.14.0-503.38.1.el9_5.x86_64.img... ok
+```
+
+### Troubleshooting
+
+If the logs includes this, we've got trouble `8:37PM DBG IP address 10.89.2.1 not found for an xname in nodes`
+
+It means that our iptables has mangled the packet and we're not receiving correctly through the bridge.
