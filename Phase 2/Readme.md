@@ -594,3 +594,30 @@ The output should be:
   "short-name": "nid"
 }
 ```
+
+## Configuring Group-Level Cloud-Init Configuration
+
+Now, we need to set the cloud-init configuration for the `compute` group, which is the SMD group that all of our nodes are in. For now, we will create a simple config that only sets our SSH key.
+
+### Creating the Compute Group Cloud-Config File
+
+First, let's create a templated cloud-config file. Create `computes.yaml` with the following contents:
+
+```yaml
+- name: compute
+  description: "compute config"
+  file:
+    encoding: plain
+    content: |
+      ## template: jinja
+      #cloud-config
+      merge_how:
+      - name: list
+        settings: [append]
+      - name: dict
+        settings: [no_replace, recurse_list]
+      users:
+        - name: root
+          ssh_authorized_keys: {{ ds.meta_data.instance_data.v1.public_keys }}
+      disable_root: false
+```
