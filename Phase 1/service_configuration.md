@@ -6,20 +6,21 @@ The release RPM includes a set of configurations that make a few assumptions abo
 > Default usernames, passwords, and initialization secrets are included.  Don't use these for production.  They are very insecure.
 >
 
-## Environment variables
+## Environment Variables
 
 All containers share the same environment variables file for the demo.  We recommend splitting them up per service where keys/secrets are concerned by following the comments in the openchami.env file
 
-## coredhcp configuration
+## CoreDHCP Configuration
 
-The OpenCHAMI dhcp server is a coredhcp container with a custom plugin that interfaces with smd to ensure that changes in node ip are quickly and accurately reflected.  It uses a plugin configuration at /etc/openchami/coredhcp.yaml
+The OpenCHAMI DHCP server is a CoreDHCP container with a custom plugin that interfaces with SMD to ensure that changes in node IPs are quickly and accurately reflected.  It uses a plugin configuration at `/etc/openchami/coredhcp.yaml`.
 
-### listen
+### `listen`
+
 The yaml below instructs the container to listen on an interface called `virbr-openchami`.  If you are running this configuration for local development/testing, you will need to have this interface configured as a virtual bridge interface.  On a real system, you will need to change the listen interface.  CoreDHCP will use this interface to listen for DHCP requests.
 
-### plugins
+### `plugins`
 
-The plugins section of the `coredhcp` configuration is read by our coresmd plugin (and others) to control the way that addresses and netboot parameters are handled for each DHCP request.  They describe the ip address of the server, the router and netmask, and how to connect to the rest of the OpenCHAMI system.  The `bootloop` directive instructs the plugin to provide a reboot ipxe script to unknown nodes.
+The plugins section of the CoreDHCP configuration is read by our `coresmd` plugin (and others) to control the way that addresses and netboot parameters are handled for each DHCP request.  They describe the ip address of the server, the router and netmask, and how to connect to the rest of the OpenCHAMI system.  The `bootloop` directive instructs the plugin to provide a reboot iPXE script to unknown nodes.
 
 ```yaml
 server4:
@@ -34,9 +35,9 @@ server4:
     - bootloop: /tmp/coredhcp.db default 5m 172.16.0.200 172.16.0.250
 ```
 
-## haproxy configuration
+## HAProxy Configuration
 
-Haproxy is a reverse proxy that allows all of our microservices to run in separate containers, but only one hostname/url is needed to access them all.  You are not likely to need to change it at all from system to system.  As configured, each microservice is a unique backend that handles a subset of URLs within the microservice.  Since each container has a predictable name within the podman (or docker) network, the microservices only need to be referenced by name.
+HAProxy is a reverse proxy that allows all of our microservices to run in separate containers, but only one hostname/url is needed to access them all.  You are not likely to need to change it at all from system to system.  As configured, each microservice is a unique backend that handles a subset of URLs within the microservice.  Since each container has a predictable name within the podman (or docker) network, the microservices only need to be referenced by name.
 
 ## Hydra Configuration
 
@@ -67,6 +68,7 @@ strategies:
 
 ## OPAAL Configuration
 
-The OPAAL service is a shim that we use to connect our external authentication service (gitlab) with our internal authorization service (hydra).  We intend to deprecate it in favor of a third-party system in the future, but it is necessary at this stage in OpenCHAMI development.  The yaml configuration file lists many of the urls that are necessary to convert from an OIDC login flow to our token-granting service.  If you change things like the cluster and domain names, you will need to update this file.
+The OPAAL service is a shim that we use to connect our external authentication service (GitLab) with our internal authorization service (hydra).  We intend to deprecate it in favor of a third-party system in the future, but it is necessary at this stage in OpenCHAMI development.  The YAML configuration file lists many of the URLs that are necessary to convert from an OIDC login flow to our token-granting service.  If you change things like the cluster and domain names, you will need to update this file.
 
-**NB** OPAAL is not used in this tutorial.  We create our own access tokens directly without an OIDC login.
+> [!NOTE]
+> OPAAL is not used in this tutorial.  We create our own access tokens directly without an OIDC login.

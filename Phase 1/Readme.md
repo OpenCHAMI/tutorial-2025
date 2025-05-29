@@ -1,7 +1,7 @@
 # Phase I — Platform Setup
 
 1. **Instance Preparation**
-   - Host packages, kernel modules, cgroups, bridge setup, nfs setup
+   - Host packages, kernel modules, cgroups, bridge setup, storage directories setup
    - Deploy MinIO, nginx, and registry
    - Checkpoints:
      - `systemctl status minio`
@@ -15,25 +15,51 @@
 
 ---
 
-## Set up the node filesystems
+## Contents
 
-Our tutorial uses NFS to share the system images for the diskless VMs.  We also use an S3 store and a container registry as part of our build process for system images.  They all need separate directories.
+- [Phase I — Platform Setup](#phase-i--platform-setup)
+  - [Contents](#contents)
+  - [Set Up Storage Directories](#set-up-storage-directories)
+  - [Set Up Internal Network and Hostnames](#set-up-internal-network-and-hostnames)
+    - [Create and Start Internal Network](#create-and-start-internal-network)
+    - [Update `/etc/hosts`](#update-etchosts)
+  - [Enable Non-OpenCHAMI Services](#enable-non-openchami-services)
+    - [Minio](#minio)
+    - [Container Registry](#container-registry)
+    - [Reload Systemd](#reload-systemd)
+  - [Checkpoint](#checkpoint)
+  - [Install OpenCHAMI](#install-openchami)
+  - [Initialize/Trust the OpenCHAMI Certificate Auhority](#initializetrust-the-openchami-certificate-auhority)
+  - [Start OpenCHAMI](#start-openchami)
+    - [Service Configuration](#service-configuration)
+  - [Install and Configure OpenCHAMI Client](#install-and-configure-openchami-client)
+    - [Installation](#installation)
+    - [Configuration](#configuration)
+  - [Generating Authentication Token](#generating-authentication-token)
+  - [Checkpoint](#checkpoint-1)
 
-Create a local directory for storing the container images
+---
+
+## Set Up Storage Directories
+
+Our tutorial uses S3 to serve the system images (in SquashFS format) for the diskless VMs. A container registry is also used to store system images (in OCI format) for reuse in other image layers (we'll go over this later).
+They all need separate directories.
+
+Create a local directory for storing the container images:
 
 ```bash
 sudo mkdir -p /data/oci
 sudo chown -R rocky: /data/oci
 ```
 
-Create a local directory for s3 access to images
+Create a local directory for S3 access to images:
 
 ```bash
-sudo mkdir -p /data/minio
-sudo chown -R rocky: /data/minio
+sudo mkdir -p /data/s3
+sudo chown -R rocky: /data/s3
 ```
 
-SELinux treats home directories specially. To avoid cgroups conflicting with SELinux enforcement, we set up a working directory outside our home directory.
+SELinux treats home directories specially. To avoid cgroups conflicting with SELinux enforcement, we set up a working directory outside our home directory:
 
 ```bash
 sudo mkdir -p /opt/workdir
@@ -41,7 +67,11 @@ sudo chown -R rocky: /opt/workdir
 cd /opt/workdir
 ```
 
-## Set up the internal networks our containers expect and internal hostnames
+## Set Up Internal Network and Hostnames
+
+The containers expect that an internal network be set up with a domain name for our OpenCHAMI services.
+
+### Create and Start Internal Network
 
 ```bash
 sudo sysctl -w net.ipv4.ip_forward=1
@@ -60,23 +90,21 @@ sudo virsh net-start openchami-net
 sudo virsh net-autostart openchami-net
 ```
 
-### Update /etc/hosts
+### Update `/etc/hosts`
 
-**Add the demo hostname to /etc/hosts so that all the certs and urls work**
+**Add the demo domain to `/etc/hosts` so that all the certs and URLs work**
    ```bash
    echo "172.16.0.254 demo.openchami.cluster" | sudo tee -a /etc/hosts > /dev/null
    ```
 
 
-## Enable our non-openchami services
+## Enable Non-OpenCHAMI Services
 
+### Minio
 
+For our S3 gateway, we use [Minio](https://github.com/minio/minio) which we'll define as a quadlet and start.
 
-### minio
-
-For our S3 gateway, we use minio which we'll define as a quadlet and start.
-
-Like all the openchami services, we create a container definition in `/etc/containers/systemd/`.
+Like all the OpenCHAMI services, we create a container definition in `/etc/containers/systemd/`.
 
 ```yaml
 # minio.container
@@ -89,7 +117,7 @@ Wants=local-fs.target network-online.target
 ContainerName=minio-server
 Image=docker.io/minio/minio:latest
 # Volumes
-Volume=/data/minio:/data:Z
+Volume=/data/s3:/data:Z
 
 # Ports
 PublishPort=9000:9000
@@ -109,13 +137,12 @@ Restart=always
 WantedBy=multi-user.target
 ```
 
-### container registry
+### Container Registry
 
 For our OCI container registry, we use the standard docker registry.  Once again, deployed as a quadlet.
 
 ```yaml
 # registry.container
-
 [Unit]
 Description=Image OCI Registry
 After=network-online.target
@@ -134,10 +161,11 @@ Restart=always
 
 [Install]
 WantedBy=multi-user.target
-
 ```
 
-### Reload systemd units to pick up the changes and start the services
+### Reload Systemd
+
+Reload Systemd to update it with our new changes and then start the services:
 
 ```bash
 sudo systemctl daemon-reload
@@ -158,27 +186,27 @@ systemctl status registry
 
 Install the signed RPM from the [openchami/release](https://github.com/openchami/release) repository with verification using a [Public Gist](https://gist.github.com/alexlovelltroy/96bfc8bb6f59c0845617a0dc659871de).
 
-1. identifies the latest release rpm
-1. downloads the public signing key for OpenCHAMI
-1. downloads the rpm
-1. verifies the signature
-1. installs the RPM
+1. Identifies the latest release rpm
+1. Downloads the public signing key for OpenCHAMI
+1. Downloads the rpm
+1. Verifies the signature
+1. Installs the RPM
 
-Run the command below in the `/opt/workdir` directory.
+Run the command below **in the `/opt/workdir` directory.**
 
 ```bash
 curl -fsSL https://gist.githubusercontent.com/alexlovelltroy/96bfc8bb6f59c0845617a0dc659871de/raw | bash
 ```
 
-## Initialize and Trust the OpenCHAMI Certificate Auhority
+## Initialize/Trust the OpenCHAMI Certificate Auhority
 
-OpenCHAMI includes a minimal open source certificate authority from smallstep.  The included automation initialized the CA on first startup.  We can immediately download a certificate into the system trust bundle on the host for trusting all subsequent OpenCHAMI certificates.  Notably, the certificate authority features ACME for automatic certificate rotation.
+OpenCHAMI includes a minimal open source certificate authority from [smallstep](https://smallstep.com/).  The included automation initialized the CA on first startup.  We can immediately download a certificate into the system trust bundle on the host for trusting all subsequent OpenCHAMI certificates.  Notably, the certificate authority features ACME for automatic certificate rotation.
 
 Start the certificate authority:
 
 ```bash
 sudo systemctl start step-ca
-sudo systemctl status step-ca
+systemctl status step-ca
 ```
 
 Import the root certificate into the system trust bundle:
@@ -190,7 +218,7 @@ sudo update-ca-trust
 
 ## Start OpenCHAMI
 
-Even OpenCHAMI runs as a collection of containers. Podman's integration with systemd allows us to start, stop, and trace OpenCHAMI as a set of dependent services through the `openchami.target` unit.
+Even OpenCHAMI runs as a collection of containers. Podman's integration with Systemd allows us to start, stop, and trace OpenCHAMI as a set of dependent services through the `openchami.target` unit.
 
 ```bash
 sudo systemctl start openchami.target
@@ -227,15 +255,15 @@ ochami version
 The output should look something like:
 
 ```
-Version:    0.2.1
-Tag:        v0.2.1
+Version:    0.3.3
+Tag:        v0.3.3
 Branch:     HEAD
-Commit:     3b28490f9a9a84070533d6794a1e5442a0c43dff
+Commit:     c625344859b3dcfcdc8e43f74b4eafeae66d4fd8
 Git State:  clean
-Date:       2025-04-08T18:18:34Z
+Date:       2025-04-28T18:34:49Z
 Go:         go1.24.2
 Compiler:   gc
-Build Host: fv-az1333-80
+Build Host: fv-az1618-941
 Build User: runner
 ```
 
@@ -306,7 +334,7 @@ OpenCHAMI tokens last for an hour by default. Whenever one needs to be regenerat
 ## Checkpoint
 
 ```bash
-sudo systemctl list-dependencies openchami.target
+systemctl list-dependencies openchami.target
 ochami bss status
 ochami smd status
 ```
