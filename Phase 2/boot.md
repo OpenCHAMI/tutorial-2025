@@ -10,7 +10,7 @@
   - [Adding New Boot Parameters](#adding-new-boot-parameters)
 - [Booting the Debug Image](#booting-the-debug-image)
   - [Configuring Debug Boot Parameters](#configuring-debug-boot-parameters)
-  - [Reboot Compute VM into Debug Image](#reboot-compute-vm-into-debug-image)
+  - [Boot Compute VM into Debug Image](#reboot-compute-vm-into-debug-image)
 
 # Introduction
 
@@ -57,9 +57,9 @@ Let's test that we can actually boot a working image by booting the debug image 
 Create `/opt/workdir/nodes/boot-debug.yaml`:
 
 ```yaml
-kernel: 'http://172.16.0.254:9090/boot-images/efi-images/compute/debug/vmlinuz-5.14.0-503.38.1.el9_5.x86_64'
+kernel: 'http://172.16.0.254:9000/boot-images/efi-images/compute/debug/vmlinuz-5.14.0-503.38.1.el9_5.x86_64'
 initrd: 'http://172.16.0.254:9090/boot-images/efi-images/compute/debug/initramfs-5.14.0-503.38.1.el9_5.x86_64.img'
-params: 'nomodeset ro root=live:http://172.16.0.254:9090/boot-images/compute/debug/rocky9.5-compute-debug-9.5 ip=dhcp overlayroot=tmpfs overlayroot_cfgdisk=disabled apparmor=0 selinux=0 console=tty0 console=ttyS0,115200 ip6=off cloud-init=disabled'
+params: 'nomodeset ro root=live:http://172.16.0.254:9090/boot-images/compute/debug/rocky9.5-compute-debug-9.5 ip=dhcp overlayroot=tmpfs overlayroot_cfgdisk=disabled apparmor=0 selinux=0 console=ttyS0,115200 ip6=off cloud-init=enabled ds=nocloud-net;s=http://172.16.0.254:8081/cloud-init'
 macs:
   - 52:54:00:be:ef:01
   - 52:54:00:be:ef:02
@@ -114,14 +114,14 @@ The output should be:
       "52:54:00:be:ef:04",
       "52:54:00:be:ef:05"
     ],
-    "params": "nomodeset ro root=live:http://172.16.0.254:9090/boot-images/compute/debug/rocky9.5-compute-debug-9.5 ip=dhcp overlayroot=tmpfs overlayroot_cfgdisk=disabled apparmor=0 selinux=0 console=tty0 console=ttyS0,115200 ip6=off cloud-init=disabled"
+    "params": "nomodeset ro root=live:http://172.16.0.254:9090/boot-images/compute/debug/rocky9.5-compute-debug-9.5 ip=dhcp overlayroot=tmpfs overlayroot_cfgdisk=disabled apparmor=0 selinux=0 console=ttyS0,115200 ip6=off cloud-init=enabled ds=nocloud-net;s=http://172.16.0.254:8081/cloud-init",
   }
 ]
 ```
 
 We should now be ready to boot the image!
 
-## Reboot Compute VM into Debug Image
+## Boot Compute VM into Debug Image
 
 Boot the first compute node into the debug image, following the console:
 
@@ -139,6 +139,14 @@ sudo virt-install \
   --boot network,hd \
   --virt-type kvm
 ```
+
+> [!TIP]
+> The default virt-install doesn't show anything during boot.
+> To get the full details of the bios, replace the standard `--boot` flag for `virt-install` to one that activates the console before the Linux Kernel through a bootloader
+> ```bash
+>  --boot loader=/usr/share/OVMF/OVMF_CODE.secboot.fd,loader.readonly=yes,loader.type=pflash,nvram.template=/var/lib/libvirt/qemu/nvram/compute.fd,loader_secure=no \
+> ```
+
 
 
 We should see our IP address get assigned, kernel and initramfs downloaded, and SquashFS loaded:

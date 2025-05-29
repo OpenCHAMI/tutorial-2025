@@ -1,85 +1,4 @@
-# Boot Images
-
-## Contents
-
-- [Boot Images](#boot-images)
-  - [Contents](#contents)
-- [Introduction](#introduction)
-- [Concepts](#concepts)
-  - [Layers](#layers)
-- [Anatomy of an Image Configuration](#anatomy-of-an-image-configuration)
-  - [Key Reference](#key-reference)
-    - [Base Layers](#base-layers)
-      - [`options` **(REQUIRED)**](#options-required)
-      - [`repos`](#repos)
-      - [`package_groups`](#package_groups)
-      - [`packages`](#packages)
-      - [`remove_packages`](#remove_packages)
-      - [`copyfiles`](#copyfiles)
-      - [`cmds`](#cmds)
-    - [Ansible Layers](#ansible-layers)
-      - [`options` **(REQUIRED)**](#options-required-1)
-  - [Examples](#examples)
-    - [`base.yaml`](#baseyaml)
-  - [`compute.yaml`](#computeyaml)
-- [Creating a Base Image Layer](#creating-a-base-image-layer)
-- [Creating a Compute Image Layer](#creating-a-compute-image-layer)
-- [Creating a Debug Image](#creating-a-debug-image)
-
-# Introduction
-
-In order for our nodes to be useful, they need to have an image to boot. Luckily, OpenCHAMI provides a layer-based boot image builder that can export into OCI and SquashFS images. It is creatively named [image-builder](https://github.com/OpenCHAMI/image-builder), and can be thought of as a fancy wrapper around [buildah](https://github.com/containers/buildah/blob/main/README.md).
-
-The image builder works by reading a YAML-formatted image specification, which it uses to create an OCI container image (`buildah from ...`, `buildah mount ...`) and run commands in (`buildah run ...`) in order to build a filesystem within the image. It can then be configured to push the resulting image to a container registry or export it to a SquashFS image and push to S3.
-
-## Install and configure regctl
-
-```bash
-curl -L https://github.com/regclient/regclient/releases/latest/download/regctl-linux-amd64 > regctl && sudo mv regctl /usr/local/bin/regctl && sudo chmod 755 /usr/local/bin/regctl
-/usr/local/bin/regctl registry set --tls disabled demo.openchami.cluster:5000
-```
-
-## Install S3 Client
-
-Now, we need to setup our S3 client, `s3cmd`. Install it:
-
-```
-sudo dnf install s3cmd
-```
-
-Then, create the following file:
-
-**`~/.s3cfg`**
-
-```
-# Setup endpoint
-host_base = demo.openchami.cluster:9090
-host_bucket = demo.openchami.cluster:9090
-bucket_location = us-east-1
-use_https = False
-
-# Setup access keys
-access_key = admin
-secret_key = admin123
-
-# Enable S3 v4 signature APIs
-signature_v2 = False
-```
-
-To make sure it works, list the S3 buckets:
-
-```bash
-s3cmd ls
-```
-
-We should see the two that got created:
-
-```
-2025-04-22 15:24  s3://boot-images
-2025-04-22 15:24  s3://efi
-```
-
-# Concepts
+# Image Builder Concepts
 
 ## Layers
 
@@ -201,7 +120,8 @@ The same as the base layer `options` key with the following keys added. Only the
 - `inventory`: the Ansible inventory file/directory
 - `vars`: YAML keys/values to set as additional Ansible variables
 
-## Examples
+---
+# image-builder Configuration Examples
 
 Let's examine two image configuration files.
 
@@ -265,7 +185,7 @@ options:
     - '--tls-verify=false'
 
   # Publish SquashFS image to local S3
-  publish_s3: 'http://demo.openchami.cluster:9090'
+  publish_s3: 'http://demo.openchami.cluster:9000'
   s3_prefix: 'compute/base/'
   s3_bucket: 'boot-images'
 
@@ -412,7 +332,7 @@ Output:
     - '9.5'
   ```
   ```yaml
-  publish_s3: 'http://172.16.0.254:9090'
+  publish_s3: 'http://172.16.0.254:9000'
   s3_prefix: 'compute/base/'
   s3_bucket: 'boot-images'
   ```
@@ -439,8 +359,8 @@ INFO - parent : demo.openchami.cluster:5000/openchami/rocky-base:9.5
 INFO - proxy :
 INFO - name : compute-base
 INFO - publish_local : False
-INFO - publish_s3 : http://172.16.0.254:9090
-INFO - s3 endpoint : http://172.16.0.254:9090
+INFO - publish_s3 : http://172.16.0.254:9000
+INFO - s3 endpoint : http://172.16.0.254:9000
 INFO - s3_prefix : compute/base/
 INFO - s3_bucket : boot-images
 INFO - publish_registry : demo.openchami.cluster:5000/openchami

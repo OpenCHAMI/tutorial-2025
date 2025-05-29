@@ -50,27 +50,6 @@ We will be using the OpenCHAMI Cloud-Init server in this tutorial for node post-
 ochami cloud-init defaults get
 ```
 
-### Setting
-
-```bash
-ochami cloud-init defaults set -f yaml <<EOF
----
-base-url: "http://172.16.0.254:8081/cloud-init"
-cluster-name: "demo"
-nid-length: 2
-public-keys:
-- "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKlJg9Jz/ILfDiiSuZvhtA0SSKuXSEYdbOaDfqGh+vFE rocky@tutorial-head.usrc"
-short-name: "nid"
-```
-
-# Prerequisite: Create an SSH Key
-
-Create an SSH key that will be placed into the running image by Cloud-Init (hit `Enter` for all prompts):
-
-```bash
-ssh-keygen -t ed25519
-```
-
 # Creating a Basic Cloud-Init Config
 
 Let's create a directory for storing our configuration:
@@ -90,15 +69,19 @@ base-url: "http://172.16.0.254:8081/cloud-init"
 cluster-name: "demo"
 nid-length: 3
 public-keys:
-- "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKlJg9Jz/ILfDiiSuZvhtA0SSKuXSEYdbOaDfqGh+vFE rocky@tutorial-head.usrc"
+- "<YOUR SSH KEY GOES HERE>"
 short-name: "nid"
 ```
 
-Replace the SSH key in `public-keys` to be your own that you created above. You can obtain it by:
+Replace the SSH key in `public-keys` to be your own that you created above. You can obtain it locally:
 
 ```bash
 cat ~/.ssh/id_ed25519.pub
 ```
+
+> [!TIP]
+> Did you know that github makes it easy to download your public ssh keys?
+> `https://github.com/$USERNAME.keys`
 
 Notice that we specify the following information:
 
@@ -136,7 +119,7 @@ The output should be:
   "cluster-name": "demo",
   "nid-length": 2,
   "public-keys": [
-    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKlJg9Jz/ILfDiiSuZvhtA0SSKuXSEYdbOaDfqGh+vFE rocky@tutorial-head.usrc"
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKlJg... rocky@tutorial.openchami.cluster"
   ],
   "short-name": "nid"
 }
@@ -148,20 +131,25 @@ Now, we need to set the cloud-init configuration for the `compute` group, which 
 
 ### Creating the Compute Group Cloud-Config File
 
-First, let's create a templated cloud-config file. Create `ci-compute.yaml` with the following contents:
+First, let's create a templated cloud-config file. Create `computes.yaml` with the following contents:
 
 ```yaml
-## template: jinja
-#cloud-config
-merge_how:
-- name: list
-  settings: [append]
-- name: dict
-  settings: [no_replace, recurse_list]
-users:
-  - name: root
-    ssh_authorized_keys: {{ ds.meta_data.instance_data.v1.public_keys }}
-disable_root: false
+- name: compute
+  description: "compute config"
+  file:
+    encoding: plain
+    content: |
+      ## template: jinja
+      #cloud-config
+      merge_how:
+      - name: list
+        settings: [append]
+      - name: dict
+        settings: [no_replace, recurse_list]
+      users:
+        - name: root
+          ssh_authorized_keys: {{ ds.meta_data.instance_data.v1.public_keys }}
+      disable_root: false
 ```
 
 Notice a few things:
@@ -190,7 +178,7 @@ cat <<EOF | ochami cloud-init group set -l debug -f yaml
   description: "compute group cloud-config template"
   file:
     encoding: base64
-    content: $(base64 -w0 /opt/workdir/cloud-init/ci-compute.yaml)
+    content: $(base64 -w0 /opt/workdir/cloud-init/computes.yaml)
 EOF
 ```
 
@@ -219,7 +207,7 @@ merge_how:
   settings: [no_replace, recurse_list]
 users:
   - name: root
-    ssh_authorized_keys: ['ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKlJg9Jz/ILfDiiSuZvhtA0SSKuXSEYdbOaDfqGh+vFE rocky@tutorial-head.usrc']
+    ssh_authorized_keys: ['ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKlJg... rocky@tutorial.openchami.cluster']
 ```
 
 ## (_OPTIONAL_) Configuring Node-Specific Meta-Data
@@ -252,7 +240,7 @@ ochami cloud-init node get meta-data x1000c0s0b0n0 | jq
         "instance_id": "i-fd37994e",
         "local_ipv4": "172.16.0.1",
         "public_keys": [
-          "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKlJg9Jz/ILfDiiSuZvhtA0SSKuXSEYdbOaDfqGh+vFE rocky@tutorial-head.usrc"
+          "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKlJg... rocky@tutorial.openchami.cluster"
         ],
         "vendor_data": {
           "cloud_init_base_url": "http://172.16.0.254:8081/cloud-init",
@@ -311,9 +299,9 @@ s3://boot-images/efi-images/compute/base/vmlinuz-5.14.0-503.38.1.el9_5.x86_64
 We can copy `/opt/workdir/nodes/boot-debug.yaml` to `/opt/workdir/nodes/boot-compute.yaml` and make modifications. We modify the `kernel`, `initrd`, and `params` to point to the boot artifacts listed in S3 above:
 
 ```yaml
-kernel: 'http://172.16.0.254:9090/boot-images/efi-images/compute/base/vmlinuz-5.14.0-503.38.1.el9_5.x86_64'
-initrd: 'http://172.16.0.254:9090/boot-images/efi-images/compute/base/initramfs-5.14.0-503.38.1.el9_5.x86_64.img'
-params: 'nomodeset ro root=live:http://172.16.0.254:9090/boot-images/compute/base/rocky9.5-compute-base-9.5 ip=dhcp overlayroot=tmpfs overlayroot_cfgdisk=disabled apparmor=0 selinux=0 console=tty0 console=ttyS0,115200 ip6=off cloud-init=enabled ds=nocloud-net;s=http://172.16.0.254:8081/cloud-init'
+kernel: 'http://172.16.0.254:9000/boot-images/efi-images/compute/base/vmlinuz-5.14.0-503.38.1.el9_5.x86_64'
+initrd: 'http://172.16.0.254:9000/boot-images/efi-images/compute/base/initramfs-5.14.0-503.38.1.el9_5.x86_64.img'
+params: 'nomodeset ro root=live:http://172.16.0.254:9000/boot-images/compute/base/rocky9.5-compute-base-9.5 ip=dhcp overlayroot=tmpfs overlayroot_cfgdisk=disabled apparmor=0 selinux=0 console=ttyS0,115200 ip6=off cloud-init=enabled ds=nocloud-net;s=http://172.16.0.254:8081/cloud-init'
 macs:
   - 52:54:00:be:ef:01
   - 52:54:00:be:ef:02
@@ -372,6 +360,12 @@ Configuring (net0 52:54:00:be:ef:01)...... ok
 tftp://172.16.0.254:69/config.ipxe... ok
 Booting from http://172.16.0.254:8081/boot/v1/bootscript?mac=52:54:00:be:ef:01
 http://172.16.0.254:8081/boot/v1/bootscript... ok
-http://172.16.0.254:9090/boot-images/efi-images/compute/base/vmlinuz-5.14.0-503.38.1.el9_5.x86_64... ok
-http://172.16.0.254:9090/boot-images/efi-images/compute/base/initramfs-5.14.0-503.38.1.el9_5.x86_64.img... ok
+http://172.16.0.254:9000/boot-images/efi-images/compute/base/vmlinuz-5.14.0-503.38.1.el9_5.x86_64... ok
+http://172.16.0.254:9000/boot-images/efi-images/compute/base/initramfs-5.14.0-503.38.1.el9_5.x86_64.img... ok
 ```
+
+### Troubleshooting
+
+If the logs includes this, we've got trouble `8:37PM DBG IP address 10.89.2.1 not found for an xname in nodes`
+
+It means that our iptables has mangled the packet and we're not receiving correctly through the bridge.

@@ -55,4 +55,3 @@ runcmd:
   - sudo lvextend -l +100%FREE /dev/rocky/lvroot
   - sudo xfs_growfs /
 ```
-\

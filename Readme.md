@@ -1,83 +1,120 @@
 # OpenCHAMI Tutorial
 
-This repository walks a user through setting up an EC2 instance to test the OpenCHAMI software.
+Welcome to the OpenCHAMI hands-on tutorial! This guide walks you through building a complete PXE-boot & cloud-init environment for HPC compute nodes using libvirt/KVM.
 
-## Getting ready
+---
+## 📋 Prerequisites
 
+The cloud-based instance provided for this class is detailed in [AWS_Environment.md](/AWS_Environment.md). Your instance must meet these requirements before you begin:
 
-If you are using this tutorial as part of an organized class, the AWS instance will be provided for you.  However, you can choose to run this independently by following the directions in [AWS_Environment.md](/AWS_Environment.md).
+- **OS & Kernel**:
+  - RHEL/CentOS/Rocky 9+ or equivalent
+  - Linux kernel ≥ 5.10 with cgroups v2 enabled
+- **Packages** (minimum versions):
+  - QEMU 6.x, `virt-install` ≥ 4.x
+  - Podman 4.x
+- **Networking**:
+  - Bridge device (e.g. `br0`)
+- **Storage**:
+  - NFS (or equivalent) export for `/var/lib/ochami/images`
+  - MinIO (or S3) with credentials ready
+  - OCI Container registry with credentials ready
+- **Tools**:
+  - `tcpdump`, `tftp`, `virsh`, `curl`
 
-## Organization
+---
+## 🗺️ Conceptual Data Flows
 
-The tutorial is organized into four parts.  Each part starts with slides and education followed by an exercise for students to apply what they've learned
+A quick snapshot of the data flows:
 
-### 1. Head Node Preparation
+1. **Discovery**: Head node learns about virtual nodes via `ochami discover`.
+2. **Image Build**: Containerized image layers → squashfs → organized with registry and served via S3.
+3. **Provisioning**: PXE boot → TFTP pulls kernel/initrd → installer.
+4. **Config & Join**: cloud-init applies user-data, finalizes OS.
 
-In a real HPC system, you'll certainly use automation to create your head node(s) to run OpenCHAMI.  For this tutorial, the student will directly interact with Podman Quadlets to create services and configurations to set up a head node that can not only control an HPC system, but also act as a virtualization platform for diskless HPC nodes.
+---
 
-* Head Node Preparation is covered by [Instance_Presentation.md](Instance_Preparation.md)
+## 🚀 Phased Tutorial Outline
 
-### 2. OpenCHAMI Installation
+> Each “Phase” is a self-contained lab with a checkpoint exercise.
 
-OpenCHAMI can be managed via Kubernetes, Docker Compose, and Podman Quadlets.  The official OpenCHAMI release process builds an RPM that includes quadlet files.  These unit files reference official containers to start and manage services.
+### Phase I — Platform Setup
 
-* OpenCHAMI Installation is covered by [OpenCHAMI_Installation.md](OpenCHAMI_Installation.md)
+1. **Instance Preparation**
+   - Host packages, kernel modules, cgroups, bridge setup, nfs setup
+   - Deploy MinIO, nginx, and registry
+   - Checkpoints:
+     - `systemctl status minio`
+     - `systemctl status registry`
+2. **OpenCHAMI & Core Services**
+   - Install OpenCHAMI RPMs
+   - Deploy internal Certificate Authority and import signing certificate
+   - Checkpoints:
+     - `ochami bss status`
+     - `systemctl list-dependencies openchami.target`
 
-### 3. Discover Nodes and Set Configuration
+### Phase II — Boot & Image Infrastructure
 
-In a normal OpenCHAMI installation, we would use Magellan to discover our BMCs on a known BMC network.  With libvirt, we need to fake the discovery process by providing inventory information directly through the ochami commandline tool.
+3. **Static Discovery & SMD Population**
+   - Anatomy of `nodes.yaml`, `ochami discover`
+   - Checkpoint: `ochami smd component get | jq '.Components[] | select(.Type == "Node")'`
+4. **Image Builder**
+   - Define base, compute, debug container layers
+   - Build & push to registry/S3
+   - Checkpoints:
+     - `s3cmd ls -Hr s3://boot-images/`
+     - `regctl tag ls demo.openchami.cluster:5000/demo/rocky-base`
+5. **PXE Boot Configuration**
+   - `boot.yaml`, BSS parameters, virt-install examples
+   - Verify DHCP options & TFTP with `tcpdump`, `tftp`
+   - Checkpoint: Successful serial console installer
+6. **Cloud-Init Configuration**
+   - Merging `cloud-init.yaml`, host-group overrides
+   - Customizing users, networking, mounts
+   - Checkpoint: Inspect `/var/log/cloud-init.log` on node
 
-* Simulating node discovery is covered in [discovery.md](discovery.md)
-* Creating system images is covered in [images.md](images.md)
-* Configuring boot parameters is covered in [boot.md](boot.md)
-* Adding cloud-init parameters for post-boot configuration is covered in [cloud-init.md](cloud-init.md)
+### Phase III — Post-Boot & Use Cases
 
-### 3. Simulated HPC Nodes
+7. **Virtual Compute Nodes & Demo**
+   - `virsh console`, node reboot workflows, cleanup scripts
+   - Scaling to multiple nodes with a looped script
+   - Checkpoint: Run a sample MPI job across two VMs
 
-Testing system management without physical nodes presents significant challenges.  Rather than expose the complexity of sourcing and configuring hardware as a prerequisite, we will use a recipe for virtualizing a network and set of diskless nodes using libvirt.  Using the `c5.metal` instance type allows us to leverage the kernel virtualization engine without emulation.  Students will learn the libvirt toolset and they apply it to create and manage diskless compute nodes.
+---
 
-* Libvirt-based Virtual Nodes are covered by [Virtual_Compute_Nodes.md](Virtual_Compute_Nodes.md)
+## 🔧 Troubleshooting & Tips
 
-### 4. OpenCHAMI Management Use Cases
+- **PXE ROM silent on serial**
+  - BIOS stage → VGA only; use `--extra-args 'console=ttyS0,115200n8 inst.text'`
+- **No DHCP OFFER**
+  - Verify via `sudo tcpdump -i br0 port 67 or 68`
+- **Service fai​​ls to start**
+  - Inspect `journalctl -u <service name>`, check port conflicts
+- **Certficate Issues**
+  - Ensure the system cert contains our root cert `grep CHAMI /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem`
+- **Token Issues**
+  - Tokens are only valid for an hour.  Renew with `export DEMO_ACCESS_TOKEN=$(sudo bash -lc 'gen_access_token')` in each terminal windown
 
-Using APIs, students will use the OpenCHAMI services to create and manage a virtual HPC system.  This involves:
+---
 
-* [Discovering your virtual nodes](discovery.md)
-* [Creating layered system images and organizing them with an OCI registry](images.md)
-* [Creating a boot configuration for compute node](boot.md)
-* [Leveraging cloud-init to customize the boot of compute nodes](cloud-init.md)
-* Updating kernel parameters for all nodes
+## 🔐 Security & Best Practices
 
-# Use cases
+- **Insecure default credentials** (MinIO, CoreDHCP admin).
+- **Use TLS** for API endpoints and registry.
+- **Isolate VLANs** for provisioning traffic.
+- **Harden** cloud-init scripts: avoid embedding secrets in plaintext.
 
-1. Use `ochami` and a fake-discovery file to create nodes in smd and then get information about them through the cli.
-   - [ ] Document the fake-discovery file format and link to this tutorial
-   - [ ] Document how this is different with Magellan
-2. Use `ochami` to update group membership for nodes and set up bss parameters per group and then lookup boot characteristics of individual nodes.
-   - [ ] BSS may not currently support boot parameters per group.  We need to check and possibly update.  See [BSS Issue #50](https://github.com/OpenCHAMI/bss/issues/50)
-   - [ ] Without a BSS that understands groups, we may need to show through scripting how to get the MACs for all nodes in a group and set the boot information directly on each.
-   - [ ] Confirm that ochami command can support the bss group functionality once bss is fixed
-3. Use `ochami` to set cloud-init info for a group and use impersonation to confirm it at the node level.
-   - [ ] Create example cloud-config files for students to use. (in this repo?)
-4. Students should be able to configure three nodes as front-end, compute, and io with different configurations via groups
-5. Students should be able to create a new kubernetes image and switch from slurm to kubernetes via reboot of a node
+---
 
+## 📖 Further Reading & Feedback
 
+- **OpenCHAMI Docs**: https://openchami.org
+- **cloud-init Reference**: https://cloudinit.readthedocs.io
+- **PXE/TFTP How-To**: https://wiki.archlinux.org/title/PXE
+- **Give Feedback**: [Issue Tracker or Feedback Form Link]
 
+---
 
-# Notes
+© 2025 OpenCHAMI Project · Licensed under Apache 2.0
 
-Troubleshooting can be a challenge.  Here are some commands that allow you to review everything.
-
-* `sudo systemctl start openchami.target`
-* `sudo systemctl list-dependencies openchami.target`
-* `sudo systemctl status openchami.target`
-* Fetch the automatically created root certificate: `sudo podman run --rm --network openchami-cert-internal docker.io/curlimages/curl -sk https://step-ca:9000/roots.pem`
-
-# TODO
-
-- [ ] Add `ochami` commands to create groups and add virtual nodes to groups
-- [ ] Add `ochami` commands to configure boot using image, kernel, and cloud-init for each group of nodes
-- [ ] Add `ochami` commands to switch from rocky 9 to rocky 8 on a subset of the compute nodes (Kubernetes?)
-- [ ] Create a dedicated md file that covers ACME certificate rotation in the context of OpenCHAMI.  Show how to set up cron to do daily rotation
-- [ ] Create a dedicated md file that describes the authentication flow and how to connect an OpenCHAMI instance to github/gitlab for users
+LA-UR-25-25073
