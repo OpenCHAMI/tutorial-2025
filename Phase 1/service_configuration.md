@@ -4,7 +4,7 @@ The release RPM includes a set of configurations that make a few assumptions abo
 
 > [!NOTE]
 > Default usernames, passwords, and initialization secrets are included.  Don't use these for production.  They are very insecure.
-> 
+>
 
 ## Environment variables
 

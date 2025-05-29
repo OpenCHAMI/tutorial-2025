@@ -1,15 +1,15 @@
 # Phase I — Platform Setup
 
-1. **Instance Preparation**  
+1. **Instance Preparation**
    - Host packages, kernel modules, cgroups, bridge setup, nfs setup
-   - Deploy MinIO, nginx, and registry 
-   - Checkpoints: 
+   - Deploy MinIO, nginx, and registry
+   - Checkpoints:
      - `systemctl status minio`
      - `systemctl status registry`
-2. **OpenCHAMI & Core Services** 
+2. **OpenCHAMI & Core Services**
    - Install OpenCHAMI RPMs
-   - Deploy internal Certificate Authority and import signing certificate  
-   - Checkpoints: 
+   - Deploy internal Certificate Authority and import signing certificate
+   - Checkpoints:
      - `ochami bss status`
      - `systemctl list-dependencies openchami.target`
 

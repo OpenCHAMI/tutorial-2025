@@ -1,16 +1,16 @@
 # Phase II — Boot & Image Infrastructure
 
-3. **Static Discovery & SMD Population**  
-   - Anatomy of `nodes.yaml`, `ochami discover`  
-   - Checkpoint: `ochami smd component get | jq '.Components[] | select(.Type == "Node")'`  
-4. **Image Builder**  
-   - Define base, compute, debug container layers  
-   - Build & push to registry/S3  
-   - Checkpoints: 
+3. **Static Discovery & SMD Population**
+   - Anatomy of `nodes.yaml`, `ochami discover`
+   - Checkpoint: `ochami smd component get | jq '.Components[] | select(.Type == "Node")'`
+4. **Image Builder**
+   - Define base, compute, debug container layers
+   - Build & push to registry/S3
+   - Checkpoints:
      - `s3cmd ls -Hr s3://boot-images/`
-     - `regctl tag ls demo.openchami.cluster:5000/demo/rocky-base`  
-5. **PXE Boot Configuration**  
-   - `boot.yaml`, BSS parameters, virt-install examples    
+     - `regctl tag ls demo.openchami.cluster:5000/demo/rocky-base`
+5. **PXE Boot Configuration**
+   - `boot.yaml`, BSS parameters, virt-install examples
    - Checkpoint: Successful serial console installer
 
 ---
@@ -45,7 +45,7 @@ Static discovery happens via `ochami` by giving it a static discovery file. "Dis
 
 - **name:** User-friendly name of the node stored in SMD.
 - **nid:** *Node Identifier*. Unique number identifying node, used in the DHCP-given hostname. Mainly used as a default hostname that can be easily ranged over (e.g. `nid[001-004,006]`).
-- **xname:** The unique node identifier which follows HPE's [xname format](https://cray-hpe.github.io/docs-csm/en-10/operations/component_names_xnames/) (see the "Node" entry in the table) and is supposed to encode location data. 
+- **xname:** The unique node identifier which follows HPE's [xname format](https://cray-hpe.github.io/docs-csm/en-10/operations/component_names_xnames/) (see the "Node" entry in the table) and is supposed to encode location data.
   The format is `x<cabinet>c<chassis>s<slot>b<bmc>n<node>` and must be unique per-node.
 - **bmc_mac:** MAC address of node's BMC. This is required even if the node does not have a BMC because SMD uses BMC MAC addresses in its discovery process as the basis for node information. Thus, we need to emulate that here.
 - **bmc_ip:** Desired IP address for node's BMC.
@@ -427,7 +427,7 @@ We will be using the following pieces of the debug URLs for the boot setup in th
 
 # Managing Boot Parameters
 
-The `ochami` tool gives us a convenient interface to changing boot parameters through IaC.  We store the desired configuration in a file and apply it with a command. 
+The `ochami` tool gives us a convenient interface to changing boot parameters through IaC.  We store the desired configuration in a file and apply it with a command.
 
 
 
@@ -520,7 +520,7 @@ TARGET SOURCE        FSTYPE  OPTIONS
 Excellent! Play around a bit more and then logout. Use `Ctrl`+`]` to exit the Virsh console.
 
 ---
-## OpenCHAMI's cloud-init metadata server 
+## OpenCHAMI's cloud-init metadata server
 
 [Cloud-Init](https://cloudinit.readthedocs.io/en/latest/index.html) is the way that OpenCHAMI provides post-boot configuration. The idea is to keep the image generic without any sensitive data like secrets and let cloud-init take care of that data.
 
