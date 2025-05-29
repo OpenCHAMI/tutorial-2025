@@ -19,23 +19,62 @@
 
 ---
 
+## Contents
+
+- [Phase II — Boot \& Image Infrastructure](#phase-ii--boot--image-infrastructure)
+  - [Contents](#contents)
+- [Libvirt introduction](#libvirt-introduction)
+- [Node Discovery for Inventory](#node-discovery-for-inventory)
+  - [Dynamic Discovery Overview](#dynamic-discovery-overview)
+  - [Static Discovery Overview](#static-discovery-overview)
+    - [Anatomy of a Static Discovery File](#anatomy-of-a-static-discovery-file)
+      - [Example](#example)
+  - ["Discover" your nodes](#discover-your-nodes)
+  - [Checkpoint](#checkpoint)
+- [Building and Organizing System Images](#building-and-organizing-system-images)
+  - [Preparing Tools](#preparing-tools)
+    - [Install and Configure `regctl`](#install-and-configure-regctl)
+    - [Install and Configure S3 Client](#install-and-configure-s3-client)
+  - [Create and Configure S3 Buckets](#create-and-configure-s3-buckets)
+- [Building System Images](#building-system-images)
+  - [Build the Base Image](#build-the-base-image)
+  - [Build the Compute Image](#build-the-compute-image)
+  - [Build the Debug Image](#build-the-debug-image)
+- [Managing Boot Parameters](#managing-boot-parameters)
+  - [Create the Boot Configuration](#create-the-boot-configuration)
+  - [Set the Boot Configuration](#set-the-boot-configuration)
+- [Boot the Compute Node with the Debug Image](#boot-the-compute-node-with-the-debug-image)
+    - [Log in to your new compute node](#log-in-to-your-new-compute-node)
+  - [OpenCHAMI's Cloud-Init Metadata Server](#openchamis-cloud-init-metadata-server)
+  - [Configuring Your Cluster's Meta-Data](#configuring-your-clusters-meta-data)
+  - [Configuring Group-Level Cloud-Init](#configuring-group-level-cloud-init)
+  - [(_OPTIONAL_) Configuring Node-Specific Meta-Data](#optional-configuring-node-specific-meta-data)
+  - [Checking the Cloud-Init Metadata](#checking-the-cloud-init-metadata)
+- [Boot Using the Compute Image](#boot-using-the-compute-image)
+  - [Switching from the Debug Image to the Compute Image](#switching-from-the-debug-image-to-the-compute-image)
+  - [Booting the Compute Node](#booting-the-compute-node)
+    - [Troubleshooting](#troubleshooting)
+  - [Logging Into the Compute Node](#logging-into-the-compute-node)
+
+---
+
+# Libvirt introduction
+
+Libvirt is an open-source virtualization management toolkit that provides a unified interface for managing various virtualization technologies, including KVM/QEMU, Xen, VMware, LXC containers, and others. Through its standardized API and set of management tools, libvirt simplifies the tasks of defining, managing, and monitoring virtual machines and networks, regardless of the underlying hypervisor or virtualization platform.
+
+For our tutorial, we leverage a hypervisor which is built-in to the Linux Kernel. The kernel portion is called Kernel-based Virtual Machine (KVM) and the userspace component is included in QEMU.
+
 # Node Discovery for Inventory
 
 In order for OpenCHAMI to be useful, the State Management Database (SMD) needs to be populated with node information. This can be done one of two ways: _static_ discovery via [the `ochami` CLI](https://github.com/OpenCHAMI/ochami) or _dynamic_ discovery via [the `magellan` CLI](https://github.com/OpenCHAMI/magellan).
 
 Static discovery is predictable and easily reproduceable, so we will use it in this tutorial.
 
-## Libvirt introduction
-
-Libvirt is an open-source virtualization management toolkit that provides a unified interface for managing various virtualization technologies, including KVM/QEMU, Xen, VMware, LXC containers, and others. Through its standardized API and set of management tools, libvirt simplifies the tasks of defining, managing, and monitoring virtual machines and networks, regardless of the underlying hypervisor or virtualization platform.
-
-For our tutorial, we leverage a hypervisor which is built-in to the Linux Kernel. The kernel portion is called Kernel-based Virtual Machine (KVM) and the userspace component is included in QEMU.
-
 ## Dynamic Discovery Overview
 
 Dynamic discovery happens via Redfish using `magellan`.
 
-At a high level, `magellan` `scan`s a specified network for hosts running a Redfish server (e.g. BMCs). Once it knows which IPs are using Redfish, the tool can `crawl` each BMC's Redfish structure to get more detailed information about it, then `collect` this information and send it to SMD.
+At a high level, `magellan` `scan`s a specified network for hosts running a Redfish server (e.g. BMCs). Once it knows which IPs are using Redfish, the tool can `crawl` each BMC's Redfish structure to get more detailed information about it and `collect` it, then `send` this information to SMD.
 
 When combined with DHCP dynamically handing out IPs, this process can be non-deterministic.
 
@@ -45,7 +84,7 @@ Static discovery happens via `ochami` by giving it a static discovery file. "Dis
 
 ### Anatomy of a Static Discovery File
 
-`ochami` adds nodes to SMD through a yaml syntax (or json) that lists node descriptions throough a minimal set of node characteristics and a set of interface definitions.
+`ochami` adds nodes to SMD through data or a file in YAML syntax (or JSON) that lists node descriptions through a minimal set of node characteristics and a set of interface definitions.
 
 - **name:** User-friendly name of the node stored in SMD.
 - **nid:** *Node Identifier*. Unique number identifying node, used in the DHCP-given hostname. Mainly used as a default hostname that can be easily ranged over (e.g. `nid[001-004,006]`).
@@ -148,11 +187,14 @@ The output should be:
 ---
 # Building and Organizing System Images
 
-Our virtual nodes operate the same way many HPC centers run their physical nodes.  Rather than managing installations on physical disks, they boot directly from the network and run entirely in memory.  And, through clever use of overlays and kernel parameters, all nodes reference the same remote system image (squashfs), dramatically reducing the chances of differences in the way they operate.
+Our virtual nodes operate the same way many HPC centers run their physical nodes.  Rather than managing installations on physical disks, they boot directly from the network and run entirely in memory.  And, through clever use of overlays and kernel parameters, all nodes reference the same remote system image (SquashFS), dramatically reducing the chances of differences in the way they operate.
 
 OpenCHAMI isn't opinionated about how these system images are created, managed, or served.  Sites can even run totally from disk if they choose.
 
-For this tutorial, we'll use a project from the OpenCHAMI consortium that creates and manages system images called [image-builder](https://github.com/OpenCHAMI/image-builder).  It is an Infrastructure-as-Code (IaC) tool that translates yaml configuration files into squashfs images that can be managed and served through OCI registries and S3-compatible object stores.
+For this tutorial, we'll use a project from the OpenCHAMI consortium that creates and manages system images called [image-builder](https://github.com/OpenCHAMI/image-builder).  It is an Infrastructure-as-Code (IaC) tool that translates YAML configuration files into:
+
+- SquashFS images served through S3 (served to nodes)
+- Container images served through OCI registries (used as parent layers for child image layers)
 
 Create a directory for our image configs.
 
@@ -168,14 +210,16 @@ cd /opt/workdir/images
 * To interact with images organized in the OCI registry, we'll use [regclient](https://github.com/regclient/regclient/)
 * To interact with Minio for S3-compatible object storage, we'll use [s3cmd](https://s3tools.org/s3cmd)
 
-### Install and configure regctl
+### Install and Configure `regctl`
 
 ```bash
 curl -L https://github.com/regclient/regclient/releases/latest/download/regctl-linux-amd64 > regctl && sudo mv regctl /usr/local/bin/regctl && sudo chmod 755 /usr/local/bin/regctl
 /usr/local/bin/regctl registry set --tls disabled demo.openchami.cluster:5000
 ```
 
-### Install and configure S3 Client
+### Install and Configure S3 Client
+
+`s3cmd` was installed during the AWS setup, so we just need to create a user config file:
 
 **`~/.s3cfg`**
 
@@ -194,7 +238,7 @@ secret_key = admin123
 signature_v2 = False
 ```
 
-## Create and configure S3 buckets
+## Create and Configure S3 Buckets
 
 ```bash
 s3cmd mb s3://efi
@@ -203,9 +247,9 @@ s3cmd mb s3://boot-images
 s3cmd setacl s3://boot-images --acl-public
 ```
 
-Set the policy to allow public downloads from minio's boot-images bucket
+Set the policy to allow public downloads from minio's boot-images bucket:
 
-**public-read-boot.json**
+**`public-read-boot.json`**
 ```json
 {
   "Version":"2012-10-17",
@@ -220,7 +264,7 @@ Set the policy to allow public downloads from minio's boot-images bucket
 }
 ```
 
-**public-read-efi.json**
+**`public-read-efi.json`**
 ```json
 {
   "Version":"2012-10-17",
@@ -257,9 +301,9 @@ We should see the two that got created with `s3cmd ls`:
 
 # Building System Images
 
-Our image builder speeds iteration by encouraging the admin to compose bootable images by layering one image on top of another.  Below are two definitions for images.  Both are bootable and can be used with image-builder.  Base.yaml starts from an empty container and adds a minmal set of common packages including the kernel.  Copmpute.yaml doesn't have to rebuild everything in the base container.  Instead, it just references it and overlays it's own files on top to add more creature comforts necessary for HPC nodes.
+Our image builder speeds iteration by encouraging the admin to compose bootable images by layering one image on top of another.  Below are two definitions for images.  Both are bootable and can be used with image-builder.  `base.yaml` starts from an empty container and adds a minmal set of common packages including the kernel.  `compute.yaml` doesn't have to rebuild everything in the base container.  Instead, it just references it and overlays it's own files on top to add more creature comforts necessary for HPC nodes.
 
-**base.yaml**
+**`base.yaml`**
 ```yaml
 options:
   layer_type: 'base'
@@ -299,7 +343,7 @@ cmds:
     loglevel: INFO
 ```
 
-**compute.yaml**
+**`compute.yaml`**
 ```yaml
 options:
   layer_type: 'base'
@@ -341,7 +385,7 @@ packages:
   - figlet
 ```
 
-## Build the base image
+## Build the Base Image
 
 Ensure you have copied the files above into the `/opt/workdr/images` directory before running the image-build commands
 
@@ -355,7 +399,7 @@ Verify that the image has been created and stored in the registry
 regctl repo ls demo.openchami.cluster:5000
 ```
 
-## Build the compute image
+## Build the Compute Image
 
 ```bash
 podman run --rm --device /dev/fuse --network host -e S3_ACCESS=admin -e S3_SECRET=admin123 -v /opt/workdir/images/compute.yaml:/home/builder/config.yaml ghcr.io/openchami/image-build:latest image-build --config config.yaml --log-level DEBUG
@@ -367,16 +411,16 @@ Verify that the image has been created and stored in the registry
 regctl repo ls demo.openchami.cluster:5000
 ```
 
-## Build the debug image
+## Build the Debug Image
 
-The images we've built so far don't contain any users.  We'll create those using cloud-init in a later step, but leaves us with no way to verify that the images are valid or to troubleshoot cloud-init.  We'll need to create our own new layer.  Follow the examples above and review the [image-builder reference](images.md).
+The images we've built so far don't contain any users.  We'll create those using cloud-init in a later step, but leaves us with no way to verify that the images are valid or to troubleshoot cloud-init.  We'll need to create our own new layer.  Follow the examples above and review the [image-builder reference](images.md), creating `compute-debug.yaml` as the debug image specification.
 
 
 - Use the base compute image as the parent (don't forget to change the image name):
 
   ```yaml
   name: 'compute-debug'
-  parent: 'demo.openchami.cluster:5000/openchami/compute-base:9.5'
+  parent: 'demo.openchami.cluster:5000/demo/compute-base:9.5'
   registry_opts_pull:
     - '--tls-verify=false'
   ```
@@ -421,6 +465,15 @@ s3cmd ls -Hr s3://boot-images/
 2025-04-22 17:28    13M  s3://boot-images/efi-images/compute/debug/vmlinuz-5.14.0-503.38.1.el9_5.x86_64
 ```
 
+> [!NOTE]
+> Each time an image pushed to S3, three items are pushed:
+>
+>  - The SquashFS image
+>  - The kernel
+>  - The initramfs
+>
+> Make sure you select the right one when setting boot parameters (make sure the S3 prefixes match).
+
 We will be using the following pieces of the debug URLs for the boot setup in the next section.  Ensure that you read them from your own s3 output which may be different than it was at the time of writing.
 
 - `boot-images/compute/debug/rocky9.5-compute-debug-9.5`
@@ -443,7 +496,7 @@ To set boot parameters, we need to pass:
    2. URI to initrd file
    3. Kernel command line arguments
 
-## Create the boot configuration
+## Create the Boot Configuration
 
 > [!TIP]
 > Your file will not look like the one below due to differences in kernel versions over time.
@@ -462,7 +515,7 @@ macs:
   - 52:54:00:be:ef:04
   - 52:54:00:be:ef:05
 ```
-## Set the boot configuration
+## Set the Boot Configuration
 
 > [!NOTE]
 > `ochami` supports both `add` and `set`.  The difference is idempotency.  If using the `add` command, `bss` will reject replacing an existing boot configuration
@@ -472,7 +525,7 @@ ochami bss boot params set -f yaml -d @/opt/workdir/nodes/boot-debug.yaml
 ```
 
 ---
-# Boot the compute node with the debug image
+# Boot the Compute Node with the Debug Image
 
 Boot the first compute node into the debug image, following the console:
 
@@ -524,7 +577,7 @@ TARGET SOURCE        FSTYPE  OPTIONS
 Excellent! Play around a bit more and then logout. Use `Ctrl`+`]` to exit the Virsh console.
 
 ---
-## OpenCHAMI's cloud-init metadata server
+## OpenCHAMI's Cloud-Init Metadata Server
 
 [Cloud-Init](https://cloudinit.readthedocs.io/en/latest/index.html) is the way that OpenCHAMI provides post-boot configuration. The idea is to keep the image generic without any sensitive data like secrets and let cloud-init take care of that data.
 
@@ -552,7 +605,7 @@ cd /opt/workdir/cloud-init
 Now, create a new SSH key on the head node and follow all of the prompts:
 
 ```bash
-ssh-keygen -r 2048 -t ed25519
+ssh-keygen -t ed25519
 ```
 
 The new that was generated can be found in `~/.ssh/id_ed25519.pub`. We're going to need this to include this in the cloud-init meta-data.
@@ -599,11 +652,9 @@ The output should be:
 }
 ```
 
-## Configuring Group-Level Cloud-Init Configuration
+## Configuring Group-Level Cloud-Init
 
 Now, we need to set the cloud-init configuration for the `compute` group, which is the SMD group that all of our nodes are in. For now, we will create a simple config that only sets our SSH key.
-
-### Creating the Compute Group Cloud-Config File
 
 First, let's create a templated cloud-config file. Create `computes.yaml` with the following contents:
 
@@ -626,21 +677,10 @@ First, let's create a templated cloud-config file. Create `computes.yaml` with t
       disable_root: false
 ```
 
-### Setting the Cloud-Config File for the Compute Group
-
-Now, we need to set this configuration for the compute group. This can be a bit awkward because we have to embed the cloud-config file into a JSON or YAML payload wrapped by the group information. We could create a file for this, but we want to be able to easily modify the cloud-config file and re-set the config with ease.
-
-Thus, we will dynamically include the cloud-config file in the payload:
+Now, we need to set this configuration for the compute group:
 
 ```bash
-cat <<EOF | ochami cloud-init group set -l debug -f yaml
----
-- name: compute
-  description: "compute group cloud-config template"
-  file:
-    encoding: base64
-    content: $(base64 -w0 /opt/workdir/cloud-init/computes.yaml)
-EOF
+ochami cloud-init group set -f yaml -d @/opt/workdir/cloud-init/computes.yaml
 ```
 
 We can check that it got added with:
@@ -681,7 +721,7 @@ If we wanted, we could configure node-specific meta-data.
 For instance, if we wanted to change the hostname of our first compute node from the default `nid01`, we could change it to `compute1` with:
 
 ```bash
-ochami cloud-init node set -d '[{"id":"x1000c0s0b0n0","local_hostname":"compute1"}]'
+ochami cloud-init node set -d '[{"id":"x1000c0s0b0n0","local-hostname":"compute1"}]'
 ```
 
 ## Checking the Cloud-Init Metadata
@@ -782,7 +822,7 @@ ochami bss boot params set -f yaml -d @/opt/workdir/nodes/boot-compute.yaml
 Double-check that the params were updated if needed:
 
 ```bash
-ochami bss boot params get
+ochami bss boot params get -f json-pretty
 ```
 
 ## Booting the Compute Node
@@ -838,3 +878,30 @@ http://172.16.0.254:9000/boot-images/efi-images/compute/base/initramfs-5.14.0-50
 If the logs includes this, we've got trouble `8:37PM DBG IP address 10.89.2.1 not found for an xname in nodes`
 
 It means that our iptables has mangled the packet and we're not receiving correctly through the bridge.
+
+## Logging Into the Compute Node
+
+Login as root to the compute node, ignoring its host key:
+
+```
+ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@172.16.0.1
+```
+
+> [!TIP]
+> We don't store the SSH host key of the compute nodes because cloud-init regenerates it on each reboot. To permanently ignore, create `/etc/ssh/ssh_config.d/ignore.conf` with the following content:
+> ```
+> Match host=172.16.0.*
+>         UserKnownHostsFile=/dev/null
+>         StrictHostKeyChecking=no
+> ```
+> Then, the `-o` options can be omitted to `ssh`.
+
+If Cloud-Init provided our SSH key, it should work:
+
+```
+Warning: Permanently added '172.16.0.1' (ED25519) to the list of known hosts.
+Last login: Thu May 29 06:59:26 2025 from 172.16.0.254
+[root@compute1 ~]#
+```
+
+Congratulations, you've just used OpenCHAMI to boot and login to a compute node1
