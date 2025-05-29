@@ -17,7 +17,7 @@ sudo chown rocky: /srv/nfs
     sudo modprobe -r nfsd && sudo modprobe nfsd
     ```
 
-### Webserver for boot artifacts
+### Webserver for Boot Artifacts
 
 We expose our NFS directory over https as well to make it easy to serve boot artifacts.
 
@@ -39,7 +39,7 @@ TimeoutStartSec=0
 Restart=always
 ```
 
-### Import images from OCI to share with nfs
+### Import Images from OCI to Share with NFS
 
 [Import-image Script](https://github.com/OpenCHAMI/image-builder/blob/main/scripts/image-import.sh)
 

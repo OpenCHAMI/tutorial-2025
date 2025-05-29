@@ -1,4 +1,4 @@
-# Using Wireguard with Cloud-Init
+# Using WireGuard with Cloud-Init
 
 The OpenCHAMI cloud-init metadata server includes a feature to enable a wireguard tunnel **before** running cloud-init.
 
@@ -12,7 +12,7 @@ ExecStartPre=/usr/local/bin/ochami-wg-cloud-init-setup.sh
 ExecPostStop=/bin/bash -c "ip link delete wg0"
 ```
 
-## Create a script to activate wireguard
+## Create a Script to Activate WireGuard
 
 ```bash
 #!/bin/sh
@@ -36,10 +36,10 @@ fi
 echo "Found OpenCHAMI cloud-init URL '${ochami_wg_ip}'"
 echo "!!!!Starting pre cloud-init config!!!!"
 
-echo "Loading wireguard kernel mod"
+echo "Loading WireGuard kernel mod"
 modprobe wireguard
 
-echo "Generating Wireguard keys"
+echo "Generating WireGuard keys"
 wg genkey | tee /etc/wireguard/private.key | wg pubkey > /etc/wireguard/public.key
 
 echo "Making Request to configure wireguard tunnel"
@@ -69,7 +69,7 @@ rm /etc/wireguard/private.key
 rm /etc/wireguard/public.key
 ```
 
-## Add the scripts to your image
+## Add the Scripts to Your Image
 
 ```yaml
 copyfiles:
@@ -80,4 +80,4 @@ copyfiles:
 
 ```
 
-## Restart cloud-init-server with wireguard
+## Restart `cloud-init-server` with WireGuard
