@@ -1,4 +1,4 @@
-# Using Wireguard with CLoud-Init
+# Using Wireguard with Cloud-Init
 
 The OpenCHAMI cloud-init metadata server includes a feature to enable a wireguard tunnel **before** running cloud-init.  
 
