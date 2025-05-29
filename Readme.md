@@ -68,13 +68,13 @@ A quick snapshot of the data flows:
    - `boot.yaml`, BSS parameters, virt-install examples
    - Verify DHCP options & TFTP with `tcpdump`, `tftp`
    - Checkpoint: Successful serial console installer
+6. **Cloud-Init Configuration**
+   - Merging `cloud-init.yaml`, host-group overrides
+   - Customizing users, networking, mounts
+   - Checkpoint: Inspect `/var/log/cloud-init.log` on node
 
 ### Phase III — Post-Boot & Use Cases
 
-6. **Cloud-Init Configuration**  
-   - Merging `cloud-init.yaml`, host-group overrides  
-   - Customizing users, networking, mounts  
-   - Checkpoint: Inspect `/var/log/cloud-init.log` on node  
 7. **Virtual Compute Nodes & Demo**
    - `virsh console`, node reboot workflows, cleanup scripts
    - Scaling to multiple nodes with a looped script

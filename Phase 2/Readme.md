@@ -12,6 +12,10 @@
 5. **PXE Boot Configuration**
    - `boot.yaml`, BSS parameters, virt-install examples
    - Checkpoint: Successful serial console installer
+6. **Cloud-Init Configuration**
+   - Merging `cloud-init.yaml`, host-group overrides
+   - Customizing users, networking, mounts
+   - Checkpoint: Inspect `/var/log/cloud-init.log` on node
 
 ---
 
