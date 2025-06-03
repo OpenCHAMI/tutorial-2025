@@ -90,6 +90,8 @@ sudo virsh net-start openchami-net
 sudo virsh net-autostart openchami-net
 ```
 
+<!-- TODO: Add net-list to get feedback on changes -->
+
 ### Update `/etc/hosts`
 
 **Add the demo domain to `/etc/hosts` so that all the certs and URLs work**
@@ -106,6 +108,10 @@ For our S3 gateway, we use [Minio](https://github.com/minio/minio) which we'll d
 
 Like all the OpenCHAMI services, we create a container definition in `/etc/containers/systemd/`.
 
+> [!NOTE]
+> You need to edit these files as root!
+
+**/etc/containers/systemd/minio.container:**
 ```yaml
 # minio.container
 [Unit]
@@ -141,6 +147,7 @@ WantedBy=multi-user.target
 
 For our OCI container registry, we use the standard docker registry.  Once again, deployed as a quadlet.
 
+**/etc/containers/systemd/minio.container:**
 ```yaml
 # registry.container
 [Unit]
@@ -184,6 +191,8 @@ systemctl status registry
 
 ## Install OpenCHAMI
 
+<!-- TODO: Split this script out into separate steps with individual comands -->
+
 Install the signed RPM from the [openchami/release](https://github.com/openchami/release) repository with verification using a [Public Gist](https://gist.github.com/alexlovelltroy/96bfc8bb6f59c0845617a0dc659871de).
 
 1. Identifies the latest release rpm
@@ -192,6 +201,7 @@ Install the signed RPM from the [openchami/release](https://github.com/openchami
 1. Verifies the signature
 1. Installs the RPM
 
+<!-- TODO: Emphasize this! -->
 Run the command below **in the `/opt/workdir` directory.**
 
 ```bash
@@ -255,15 +265,15 @@ ochami version
 The output should look something like:
 
 ```
-Version:    0.3.3
-Tag:        v0.3.3
+Version:    0.3.4
+Tag:        v0.3.4
 Branch:     HEAD
-Commit:     c625344859b3dcfcdc8e43f74b4eafeae66d4fd8
+Commit:     78a2b046518839bbd8283804905e1648dd739927
 Git State:  clean
-Date:       2025-04-28T18:34:49Z
-Go:         go1.24.2
+Date:       2025-06-02T21:19:21Z
+Go:         go1.24.3
 Compiler:   gc
-Build Host: fv-az1618-941
+Build Host: fv-az1758-958
 Build User: runner
 ```
 
@@ -272,7 +282,7 @@ Build User: runner
 To configure `ochami` to be able to communicate with our cluster, we need to create a config file. We can create one in one fell swoop with:
 
 ```bash
-ochami config cluster set --user --default demo cluster.uri https://demo.openchami.cluster:8443
+sudo ochami config cluster set --system --default demo cluster.uri https://demo.openchami.cluster:8443
 ```
 
 This will create a config file at `~/.config/ochami/config.yaml`. We can check that `ochami` is reading it properly with:
