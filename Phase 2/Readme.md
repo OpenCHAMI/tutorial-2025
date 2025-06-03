@@ -457,12 +457,12 @@ s3cmd ls -Hr s3://boot-images/
 ```
 
 ```
-2025-04-22 15:48  1284M  s3://boot-images/compute/base/rocky9.5-compute-base-9.5
-2025-04-22 17:28  1284M  s3://boot-images/compute/debug/rocky9.5-compute-debug-9.5
-2025-04-22 15:48    75M  s3://boot-images/efi-images/compute/base/initramfs-5.14.0-503.38.1.el9_5.x86_64.img
-2025-04-22 15:48    13M  s3://boot-images/efi-images/compute/base/vmlinuz-5.14.0-503.38.1.el9_5.x86_64
-2025-04-22 17:28    75M  s3://boot-images/efi-images/compute/debug/initramfs-5.14.0-503.38.1.el9_5.x86_64.img
-2025-04-22 17:28    13M  s3://boot-images/efi-images/compute/debug/vmlinuz-5.14.0-503.38.1.el9_5.x86_64
+2025-06-03 18:48  1300M  s3://boot-images/compute/base/rocky9.5-compute-base-9.5
+2025-06-03 18:51  1301M  s3://boot-images/compute/debug/rocky9.5-compute-debug-9.5
+2025-06-03 18:47    76M  s3://boot-images/efi-images/compute/base/initramfs-5.14.0-503.40.1.el9_5.x86_64.img
+2025-06-03 18:47    13M  s3://boot-images/efi-images/compute/base/vmlinuz-5.14.0-503.40.1.el9_5.x86_64
+2025-06-03 18:51    76M  s3://boot-images/efi-images/compute/debug/initramfs-5.14.0-503.40.1.el9_5.x86_64.img
+2025-06-03 18:51    13M  s3://boot-images/efi-images/compute/debug/vmlinuz-5.14.0-503.40.1.el9_5.x86_64
 ```
 
 > [!NOTE]
@@ -505,8 +505,8 @@ To set boot parameters, we need to pass:
 Create `/opt/workdir/nodes/boot-debug.yaml`:
 
 ```yaml
-kernel: 'http://172.16.0.254:9000/boot-images/efi-images/compute/debug/vmlinuz-5.14.0-503.38.1.el9_5.x86_64'
-initrd: 'http://172.16.0.254:9000/boot-images/efi-images/compute/debug/initramfs-5.14.0-503.38.1.el9_5.x86_64.img'
+kernel: 'http://172.16.0.254:9000/boot-images/efi-images/compute/debug/vmlinuz-5.14.0-503.40.1.el9_5.x86_64'
+initrd: 'http://172.16.0.254:9000/boot-images/efi-images/compute/debug/initramfs-5.14.0-503.40.1.el9_5.x86_64.img'
 params: 'nomodeset ro root=live:http://172.16.0.254:9000/boot-images/compute/debug/rocky9.5-compute-debug-9.5 ip=dhcp overlayroot=tmpfs overlayroot_cfgdisk=disabled apparmor=0 selinux=0 console=ttyS0,115200 ip6=off cloud-init=enabled ds=nocloud-net;s=http://172.16.0.254:8081/cloud-init'
 macs:
   - 52:54:00:be:ef:01
@@ -530,6 +530,7 @@ ochami bss boot params set -f yaml -d @/opt/workdir/nodes/boot-debug.yaml
 Boot the first compute node into the debug image, following the console:
 
 ```bash
+sudo cp /usr/share/OVMF/OVMF_VARS.fd /var/lib/libvirt/qemu/nvram/compute1.fd
 sudo virt-install \
   --name compute1 \
   --memory 4096 \
@@ -540,21 +541,17 @@ sudo virt-install \
   --network network=openchami-net,model=virtio,mac=52:54:00:be:ef:01 \
   --graphics none \
   --console pty,target_type=serial \
-  --boot network,hd \
+  --boot loader=/usr/share/OVMF/OVMF_CODE.secboot.fd,loader.readonly=yes,loader.type=pflash,nvram.template=/var/lib/libvirt/qemu/nvram/compute1.fd,loader_secure=no \
   --virt-type kvm
 ```
 
 > [!TIP]
-> The default virt-install doesn't show anything during boot.
-> To get the full details of the bios, replace the standard `--boot` flag for `virt-install` to one that activates the console before the Linux Kernel through a bootloader
-> ```bash
->  --boot loader=/usr/share/OVMF/OVMF_CODE.secboot.fd,loader.readonly=yes,loader.type=pflash,nvram.template=/var/lib/libvirt/qemu/nvram/compute1.fd,loader_secure=no \
+> If you need to re-create the node. You need to destroy the vm 
+> ``` bash
+> sudo virsh destroy compute1
+> sudo virsh undefine --vram compute1
 > ```
-> This requires setting up a virtual "nvram" bootloader that must be managed in addition to the virtual instance itself.
-> Create the nvram with the following command:
-> ```bash
->  sudo cp /usr/share/OVMF/OVMF_VARS.fd /var/lib/libvirt/qemu/nvram/compute1.fd
-> ```
+> 
 
 
 ### Log in to your new compute node
@@ -795,15 +792,15 @@ We should see:
 
 ```
 s3://boot-images/compute/base/rocky9.5-compute-base-9.5
-s3://boot-images/efi-images/compute/base/initramfs-5.14.0-503.38.1.el9_5.x86_64.img
-s3://boot-images/efi-images/compute/base/vmlinuz-5.14.0-503.38.1.el9_5.x86_64
+s3://boot-images/efi-images/compute/base/initramfs-5.14.0-503.40.1.el9_5.x86_64.img
+s3://boot-images/efi-images/compute/base/vmlinuz-5.14.0-503.40.1.el9_5.x86_64
 ```
 
-We can copy `/opt/workdir/nodes/boot-debug.yaml` to `/opt/workdir/nodes/boot-compute.yaml` and make a few modifications. We need to modify the `kernel`, `initrd`, and `params` to point to the boot artifacts listed in S3 above:
+We create `/opt/workdir/nodes/boot-compute.yaml` :
 
 ```yaml
-kernel: 'http://172.16.0.254:9000/boot-images/efi-images/compute/base/vmlinuz-5.14.0-503.38.1.el9_5.x86_64'
-initrd: 'http://172.16.0.254:9000/boot-images/efi-images/compute/base/initramfs-5.14.0-503.38.1.el9_5.x86_64.img'
+kernel: 'http://172.16.0.254:9000/boot-images/efi-images/compute/base/vmlinuz-5.14.0-503.40.1.el9_5.x86_64'
+initrd: 'http://172.16.0.254:9000/boot-images/efi-images/compute/base/initramfs-5.14.0-503.40.1.el9_5.x86_64.img'
 params: 'nomodeset ro root=live:http://172.16.0.254:9000/boot-images/compute/base/rocky9.5-compute-base-9.5 ip=dhcp overlayroot=tmpfs overlayroot_cfgdisk=disabled apparmor=0 selinux=0 console=ttyS0,115200 ip6=off cloud-init=enabled ds=nocloud-net;s=http://172.16.0.254:8081/cloud-init'
 macs:
   - 52:54:00:be:ef:01
@@ -822,7 +819,7 @@ ochami bss boot params set -f yaml -d @/opt/workdir/nodes/boot-compute.yaml
 Double-check that the params were updated if needed:
 
 ```bash
-ochami bss boot params get -f json-pretty
+ochami bss boot params get -F json-pretty
 ```
 
 ## Booting the Compute Node
