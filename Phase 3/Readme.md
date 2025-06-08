@@ -11,4 +11,3 @@
    - Checkpoint: Run a sample MPI job across two VMs
 
 ---
-
