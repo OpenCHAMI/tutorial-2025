@@ -26,6 +26,7 @@
     - [1.3.2 Container Registry](#132-container-registry)
     - [1.3.3 Reload Systemd](#133-reload-systemd)
     - [1.3.4 Checkpoint](#134-checkpoint)
+  - [🛑 ***STOP HERE***](#-stop-here)
   - [1.4 Install OpenCHAMI](#14-install-openchami)
   - [1.5 Initialize/Trust the OpenCHAMI Certificate Auhority](#15-initializetrust-the-openchami-certificate-auhority)
   - [1.6 Start OpenCHAMI](#16-start-openchami)
@@ -35,6 +36,7 @@
     - [1.7.2 Configuration](#172-configuration)
   - [1.8 Generating Authentication Token](#18-generating-authentication-token)
   - [1.9 Checkpoint](#19-checkpoint)
+  - [🛑 ***STOP HERE***](#-stop-here-1)
 
 ---
 
@@ -185,8 +187,10 @@ systemctl status minio
 systemctl status registry
 ```
 
-## 1.4 Install OpenCHAMI
+🛑 ***STOP HERE***
+---
 
+## 1.4 Install OpenCHAMI
 <!-- TODO: Split this script out into separate steps with individual comands -->
 
 Install the signed RPM from the [openchami/release](https://github.com/openchami/release) repository with verification using a [Public Gist](https://gist.github.com/alexlovelltroy/96bfc8bb6f59c0845617a0dc659871de).
@@ -359,3 +363,6 @@ openchami.target
 ● └─step-ca.service
 {"bss-status":"running"}{"code":0,"message":"HSM is healthy"}
 ```
+
+🛑 ***STOP HERE***
+---

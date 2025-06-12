@@ -28,6 +28,7 @@
       - [2.2.2.1 Anatomy of a Static Discovery File](#2221-anatomy-of-a-static-discovery-file)
     - [2.2.3 "Discover" your nodes](#223-discover-your-nodes)
     - [2.2.4 Checkpoint](#224-checkpoint)
+  - [🛑 ***STOP HERE***](#-stop-here)
   - [2.3 Building and Organizing System Images](#23-building-and-organizing-system-images)
     - [2.3.1 Preparing Tools](#231-preparing-tools)
     - [2.3.2 Install and Configure `regctl`](#232-install-and-configure-regctl)
@@ -41,11 +42,13 @@
     - [2.4.5 Configure the Debug Image](#245-configure-the-debug-image)
     - [2.4.6 Build the Debug Image](#246-build-the-debug-image)
     - [2.4.7 Verify Boot Artifact Creation](#247-verify-boot-artifact-creation)
+  - [🛑 ***STOP HERE***](#-stop-here-1)
   - [2.5 Managing Boot Parameters](#25-managing-boot-parameters)
     - [2.5.1 Create the Boot Configuration](#251-create-the-boot-configuration)
     - [2.5.2 Set the Boot Configuration](#252-set-the-boot-configuration)
   - [2.6 Boot the Compute Node with the Debug Image](#26-boot-the-compute-node-with-the-debug-image)
     - [2.6.1 Log In to the Compute Node](#261-log-in-to-the-compute-node)
+  - [🛑 ***STOP HERE***](#-stop-here-2)
   - [2.7 OpenCHAMI's Cloud-Init Metadata Server](#27-openchamis-cloud-init-metadata-server)
     - [2.7.1 Configure Cluster Meta-Data](#271-configure-cluster-meta-data)
     - [2.7.2 Configure Group-Level Cloud-Init](#272-configure-group-level-cloud-init)
@@ -55,6 +58,7 @@
     - [2.8.1 Switch from the Debug Image to the Compute Image](#281-switch-from-the-debug-image-to-the-compute-image)
     - [2.8.2 Booting the Compute Node](#282-booting-the-compute-node)
     - [2.8.3 Logging Into the Compute Node](#283-logging-into-the-compute-node)
+  - [🛑 ***STOP HERE***](#-stop-here-3)
 
 ## 2.1 Libvirt introduction
 
@@ -181,7 +185,9 @@ The output should be:
 }
 ```
 
+🛑 ***STOP HERE***
 ---
+
 ## 2.3 Building and Organizing System Images
 
 Our virtual nodes operate the same way many HPC centers run their physical nodes.  Rather than managing installations on physical disks, they boot directly from the network and run entirely in memory.  And, through clever use of overlays and kernel parameters, all nodes reference the same remote system image (SquashFS), dramatically reducing the chances of differences in the way they operate.
@@ -505,8 +511,9 @@ We will be using the following pieces of the debug URLs for the boot setup in th
 - `boot-images/compute/debug/rocky9.5-compute-debug-9.5`
 - `boot-images/efi-images/compute/debug/initramfs-<REPLACE WITH ACTUAL KERNEL VERSION>.el9_5.x86_64.img`
 - `boot-images/efi-images/compute/debug/vmlinuz-<REPLACE WITH ACTUAL KERNEL VERSION>.el9_5.x86_64`
---
 
+🛑 ***STOP HERE***
+---
 
 ## 2.5 Managing Boot Parameters
 
@@ -599,6 +606,9 @@ TARGET SOURCE        FSTYPE  OPTIONS
 ```
 
 Excellent! Play around a bit more and then logout. Use `Ctrl`+`]` to exit the Virsh console.
+
+🛑 ***STOP HERE***
+---
 
 ## 2.7 OpenCHAMI's Cloud-Init Metadata Server
 
@@ -927,3 +937,6 @@ Last login: Thu May 29 06:59:26 2025 from 172.16.0.254
 ```
 
 Congratulations, you've just used OpenCHAMI to boot and login to a compute node1
+
+🛑 ***STOP HERE***
+---
