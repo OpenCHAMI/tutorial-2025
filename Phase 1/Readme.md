@@ -30,6 +30,9 @@
   - [1.4 Install OpenCHAMI](#14-install-openchami)
   - [1.5 Initialize/Trust the OpenCHAMI Certificate Auhority](#15-initializetrust-the-openchami-certificate-auhority)
   - [1.6 Start OpenCHAMI](#16-start-openchami)
+    - [Troubleshooting](#troubleshooting)
+      - [Dependency Issue](#dependency-issue)
+      - [Certificates](#certificates)
     - [1.6.1 Service Configuration](#161-service-configuration)
   - [1.7 Install and Configure OpenCHAMI Client](#17-install-and-configure-openchami-client)
     - [1.7.1 Installation](#171-installation)
@@ -76,8 +79,15 @@ The containers expect that an internal network be set up with a domain name for 
 
 ### 1.2.1 Create and Start Internal Network
 
+Let's configure our head node to forward traffic from the compute nodes:
+
 ```bash
 sudo sysctl -w net.ipv4.ip_forward=1
+```
+
+Now, let's create an internal Libvirt network that will be used as the network interface on our head node that our virtual compute nodes will be attached to:
+
+```bash
 cat <<EOF > openchami-net.xml
 <network>
   <name>openchami-net</name>
@@ -93,30 +103,43 @@ sudo virsh net-start openchami-net
 sudo virsh net-autostart openchami-net
 ```
 
-<!-- TODO: Add net-list to get feedback on changes -->
+We can check that the network got created:
+
+```bash
+sudo virsh net-list
+```
+
+The output should be:
+
+```
+ Name            State    Autostart   Persistent
+--------------------------------------------------
+ default         active   yes         yes
+ openchami-net   active   yes         yes
+```
 
 ### 1.2.2 Update `/etc/hosts`
 
-**Add the demo domain to `/etc/hosts` so that all the certs and URLs work**
-   ```bash
-   echo "172.16.0.254 demo.openchami.cluster" | sudo tee -a /etc/hosts > /dev/null
-   ```
+Add our cluster's service domain to `/etc/hosts` so that the certificates will work:
 
+```bash
+echo "172.16.0.254 demo.openchami.cluster" | sudo tee -a /etc/hosts > /dev/null
+```
 
 ## 1.3 Enable Non-OpenCHAMI Services
+
+> [!NOTE]
+> Files in this section need to be edited as root!
 
 ### 1.3.1 S3
 
 For our S3 gateway, we use [Minio](https://github.com/minio/minio) which we'll define as a quadlet and start.
 
-Like all the OpenCHAMI services, we create a container definition in `/etc/containers/systemd/`.
+Like all the OpenCHAMI services, we create a quadlet definition in `/etc/containers/systemd/` for our S3 service.
 
-> [!NOTE]
-> You need to edit these files as root!
+**Edit: `/etc/containers/systemd/minio.container`**
 
-**/etc/containers/systemd/minio.container**
-```yaml
-# minio.container
+```ini
 [Unit]
 Description=Minio S3
 After=local-fs.target network-online.target
@@ -150,9 +173,9 @@ WantedBy=multi-user.target
 
 For our OCI container registry, we use the standard docker registry.  Once again, deployed as a quadlet.
 
-**/etc/containers/systemd/registry.container**
-```yaml
-# registry.container
+**Edit: `/etc/containers/systemd/registry.container`**
+
+```ini
 [Unit]
 Description=Image OCI Registry
 After=network-online.target
@@ -185,6 +208,23 @@ sudo systemctl start registry.service
 
 ### 1.3.4 Checkpoint
 
+Make sure the S3 (`minio`) and OCI (`registry`) services are up and running.
+
+**Quickly:**
+
+```bash
+for s in minio registry; do echo -n "$s: "; systemctl is-failed $s; done
+```
+
+The output should be:
+
+```
+minio: active
+registry: active
+```
+
+**More detail:**
+
 ```bash
 systemctl status minio
 systemctl status registry
@@ -195,57 +235,117 @@ systemctl status registry
 
 ## 1.4 Install OpenCHAMI
 
-Install the signed RPM from the [openchami/release](https://github.com/openchami/release) repository with verification using a [Public Gist](https://gist.github.com/alexlovelltroy/96bfc8bb6f59c0845617a0dc659871de).
+Now, we need install the OpenCHAMI services. Luckily, there is [a release RPM](https://github.com/openchami/release) for this that provides signed RPMs. We'll install the latest version.
 
-1. Identifies the latest release rpm
-1. Downloads the public signing key for OpenCHAMI
-1. Downloads the rpm
-1. Verifies the signature
-1. Installs the RPM
-
-<!-- TODO: Emphasize this! -->
-Run the commands below **in the `/opt/workdir` directory.**
+**Run the commands below in the `/opt/workdir` directory!**
 
 ```bash
+# Set repository details
 OWNER="openchami"
 REPO="release"
+
+# Identify the latest release RPM
 API_URL="https://api.github.com/repos/${OWNER}/${REPO}/releases/latest"
 release_json=$(curl -s "$API_URL")
 rpm_url=$(echo "$release_json" | jq -r '.assets[] | select(.name | endswith(".rpm")) | .browser_download_url' | head -n 1)
 rpm_name=$(echo "$release_json" | jq -r '.assets[] | select(.name | endswith(".rpm")) | .name' | head -n 1)
+
+# Download the RPM
 curl -L -o "$rpm_name" "$rpm_url"
+
+# Install the RPM
 sudo rpm -Uvh "$rpm_name"
 ```
 
 ## 1.5 Initialize/Trust the OpenCHAMI Certificate Auhority
 
-OpenCHAMI includes a minimal open source certificate authority from [smallstep](https://smallstep.com/).  The included automation initialized the CA on first startup.  We can immediately download a certificate into the system trust bundle on the host for trusting all subsequent OpenCHAMI certificates.  Notably, the certificate authority features ACME for automatic certificate rotation.
+OpenCHAMI includes a minimal open source certificate authority from [Smallstep](https://smallstep.com/). Starting the `step-ca` service will initialize the CA certificate, which we can pull from the container and add to our host system's trust store so that all subsequent OpenCHAMI certificates will be trusted. The `acme-*` services included with OpenCHAMI handle the certificate rotation.
 
-Start the certificate authority:
+First, start the certificate authority and make sure it starts correctly:
 
 ```bash
 sudo systemctl start step-ca
 systemctl status step-ca
 ```
 
-Import the root certificate into the system trust bundle:
+Next, import the root certificate into the system trust bundle and update the trust bundle:
 
 ```bash
 sudo podman run --rm --network openchami-cert-internal docker.io/curlimages/curl -sk https://step-ca:9000/roots.pem | sudo tee /etc/pki/ca-trust/source/anchors/ochami.pem
 sudo update-ca-trust
 ```
 
+If all goes well, you should see a certificate be printed out:
+
+```
+-----BEGIN CERTIFICATE-----
+MIIBpTCCAUqgAwIBAgIRAJ8FxVEPomiX+V9j52lhqEwwCgYIKoZIzj0EAwIwMDES
+MBAGA1UEChMJT3BlbkNIQU1JMRowGAYDVQQDExFPcGVuQ0hBTUkgUm9vdCBDQTAe
+Fw0yNTA2MTIxMjU0NDhaFw0zNTA2MTAxMjU0NDhaMDAxEjAQBgNVBAoTCU9wZW5D
+SEFNSTEaMBgGA1UEAxMRT3BlbkNIQU1JIFJvb3QgQ0EwWTATBgcqhkjOPQIBBggq
+hkjOPQMBBwNCAAR5lRUWCeJA0TXPVcRLADqtOgsRXA25umd19OrOX2Yb4hQlhQXQ
+Vy/Hg5MyL9nmt8FA38/FqaQiiOkAs4OCcr5ko0UwQzAOBgNVHQ8BAf8EBAMCAQYw
+EgYDVR0TAQH/BAgwBgEB/wIBATAdBgNVHQ4EFgQUdTwBbbvhfzRA8pHQzTv1xMrj
+zAQwCgYIKoZIzj0EAwIDSQAwRgIhAKbk2sAVvMmdc3p72J9reyHcu7XUemAJawq+
+E6o5TR7JAiEAt2xMS3/eTuUU7wbsoy8HSmsSpc11aAguQoOMbQ9Q8DI=
+-----END CERTIFICATE-----
+```
+
+We will be able to verify if this worked shortly.
+
 ## 1.6 Start OpenCHAMI
 
-Even OpenCHAMI runs as a collection of containers. Podman's integration with Systemd allows us to start, stop, and trace OpenCHAMI as a set of dependent services through the `openchami.target` unit.
+OpenCHAMI runs as a collection of containers. Podman's integration with Systemd allows us to start, stop, and trace OpenCHAMI as a set of dependent Systemd services through the `openchami.target` unit.
 
 ```bash
 sudo systemctl start openchami.target
 systemctl list-dependencies openchami.target
+
+```
+> [!TIP]
+> We can use `watch` to dynamically see the services starting:
+> ```
+> watch systemctl list-dependencies openchami.target
+> ```
+
+If the services started correctly, the second command above should yield:
+
+```
+openchami.target
+● ├─bss.service
+● ├─cloud-init-server.service
+● ├─coresmd.service
+● ├─haproxy.service
+● ├─hydra.service
+● ├─opaal-idp.service
+● ├─opaal.service
+● ├─postgres.service
+● ├─smd.service
+● └─step-ca.service
 ```
 
-> [!TIP]
-> If the `openchami.target` fails because of a dependency issue, try looking at the logs with `journalctl -xe` or `journalctl -eu $container_name` for more information.
+Check the **Troubleshooting** subsection below if issues arise.
+
+### Troubleshooting
+
+If a service fails (if 'x' appears next to a service in the `systemctl list-dependencies` command), try using `journalctl -eu <service_name>` to look at the logs
+
+#### Dependency Issue
+
+If a service fails because of another dependent service, use the following dependency chart diagram to pinpoint the service causing the dependency failure. Black arrows are hard dependencies (service will fail if dependent service not started) and grey arrows are soft dependencies.
+
+![OpenCHAMI Systemd service dependency diagram](img/openchami-svc-deps.svg)
+
+#### Certificates
+
+One common issue is with certificates. If TLS errors are occurring, **make sure the domain in the `acme-register.container` and `acme-deploy.container` files within `/etc/containers/systemd/` (argument to `-d` flag) match the cluster domain set in `/etc/hosts`.**
+
+After ensuring the above or the error is of a different cause, regenerating the OpenCHAMI certificates can usually solve such issues. This can be done with:
+
+```
+sudo systemctl restart acme-deploy
+sudo systemctl restart haproxy
+```
 
 ### 1.6.1 Service Configuration
 
@@ -294,7 +394,7 @@ To configure `ochami` to be able to communicate with our cluster, we need to cre
 sudo ochami config cluster set --system --default demo cluster.uri https://demo.openchami.cluster:8443
 ```
 
-This will create a config file at `~/.config/ochami/config.yaml`. We can check that `ochami` is reading it properly with:
+This will create a system-wide config file at `/etc/ochami/config.yaml`. We can check that `ochami` is reading it properly with:
 
 ```bash
 ochami config show
@@ -325,16 +425,10 @@ We should get:
 {"bss-status":"running"}
 ```
 
-Voilà!
-
 > [!TIP]
-> If you receive an error related to TLS when runing `ochami bss status`, then try re-running `acme-deploy` and restarting the `haproxy` service.
->
-> ```bash
-> systemctl restart acme-deploy
-> systemctl restart haproxy
-> ```
+> If TLS errors occur, see the [**Certificates**](#certificates) subsection within the **Troubleshooting** section above.
 
+Voilà!
 
 ## 1.8 Generating Authentication Token
 
@@ -355,26 +449,37 @@ OpenCHAMI tokens last for an hour by default. Whenever one needs to be regenerat
 
 ## 1.9 Checkpoint
 
-```bash
-systemctl list-dependencies openchami.target
-ochami bss status
-ochami smd status
-```
-should yield:
-```bash
-openchami.target
-● ├─bss.service
-● ├─cloud-init-server.service
-● ├─coresmd.service
-● ├─haproxy.service
-● ├─hydra.service
-● ├─opaal-idp.service
-● ├─opaal.service
-● ├─postgres.service
-● ├─smd.service
-● └─step-ca.service
-{"bss-status":"running"}{"code":0,"message":"HSM is healthy"}
-```
+1. ```bash
+   systemctl list-dependencies openchami.target
+   ```
+   should yield:
+   ```bash
+   openchami.target
+   ● ├─bss.service
+   ● ├─cloud-init-server.service
+   ● ├─coresmd.service
+   ● ├─haproxy.service
+   ● ├─hydra.service
+   ● ├─opaal-idp.service
+   ● ├─opaal.service
+   ● ├─postgres.service
+   ● ├─smd.service
+   ● └─step-ca.service
+   ```
+1. ```
+   ochami bss status
+   ```
+   should yield:
+   ```
+   {"bss-status":"running"}
+   ```
+1. ```
+   ochami smd status
+   ```
+   should yield:
+   ```
+   {"bss-status":"running"}
+   ```
 
 🛑 ***STOP HERE***
 ---
