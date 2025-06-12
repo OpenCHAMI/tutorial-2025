@@ -40,6 +40,9 @@
 
 ---
 
+> [!WARNING]
+> **Avoid running everything in a root shell.** It's tempting to avoid having to run `sudo` every time, but this will have unintended side effects.
+
 ## 1.1 Set Up Storage Directories
 
 Our tutorial uses S3 to serve the system images (in SquashFS format) for the diskless VMs. A container registry is also used to store system images (in OCI format) for reuse in other image layers (we'll go over this later).
