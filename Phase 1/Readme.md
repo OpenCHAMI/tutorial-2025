@@ -191,7 +191,6 @@ systemctl status registry
 ---
 
 ## 1.4 Install OpenCHAMI
-<!-- TODO: Split this script out into separate steps with individual comands -->
 
 Install the signed RPM from the [openchami/release](https://github.com/openchami/release) repository with verification using a [Public Gist](https://gist.github.com/alexlovelltroy/96bfc8bb6f59c0845617a0dc659871de).
 
@@ -202,10 +201,15 @@ Install the signed RPM from the [openchami/release](https://github.com/openchami
 1. Installs the RPM
 
 <!-- TODO: Emphasize this! -->
-Run the command below **in the `/opt/workdir` directory.**
+Run the commands below **in the `/opt/workdir` directory.**
 
 ```bash
-curl -fsSL https://gist.githubusercontent.com/alexlovelltroy/96bfc8bb6f59c0845617a0dc659871de/raw | bash
+API_URL="https://api.github.com/repos/${OWNER}/${REPO}/releases/latest"
+release_json=$(curl -s "$API_URL")
+rpm_url=$(echo "$release_json" | jq -r '.assets[] | select(.name | endswith(".rpm")) | .browser_download_url' | head -n 1)
+rpm_name=$(echo "$release_json" | jq -r '.assets[] | select(.name | endswith(".rpm")) | .name' | head -n 1)
+curl -L -o "$rpm_name" "$rpm_url"
+sudo rpm -Uvh "$rpm_name"
 ```
 
 ## 1.5 Initialize/Trust the OpenCHAMI Certificate Auhority
