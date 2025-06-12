@@ -207,6 +207,8 @@ Install the signed RPM from the [openchami/release](https://github.com/openchami
 Run the commands below **in the `/opt/workdir` directory.**
 
 ```bash
+OWNER="openchami"
+REPO="release"
 API_URL="https://api.github.com/repos/${OWNER}/${REPO}/releases/latest"
 release_json=$(curl -s "$API_URL")
 rpm_url=$(echo "$release_json" | jq -r '.assets[] | select(.name | endswith(".rpm")) | .browser_download_url' | head -n 1)
