@@ -337,6 +337,9 @@ Since we aren't using an external identity provider, we will use OpenCHAMI's int
 export DEMO_ACCESS_TOKEN=$(sudo bash -lc 'gen_access_token')
 ```
 
+> [!TIP]
+> **Keep this command handy! Tokens expire after an hour.**
+
 Note that `sudo` is needed because the containers are running as root and so if `sudo` is omitted, the containers will not be found.
 
 OpenCHAMI tokens last for an hour by default. Whenever one needs to be regenerated, run the above command.
