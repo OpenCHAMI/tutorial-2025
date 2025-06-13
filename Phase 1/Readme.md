@@ -442,6 +442,12 @@ export DEMO_ACCESS_TOKEN=$(sudo bash -lc 'gen_access_token')
 
 > [!TIP]
 > **Keep this command handy! Tokens expire after an hour.**
+>
+> If you see:
+> ```
+> Environment variable DEMO_ACCESS_TOKEN unset for reading token for cluster "demo"
+> ```
+> when running the `ochami` command later, it is time to rerun this command.
 
 Note that `sudo` is needed because the containers are running as root and so if `sudo` is omitted, the containers will not be found.
 

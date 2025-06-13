@@ -126,11 +126,14 @@ Static discovery happens via `ochami` by giving it a static discovery file. "Dis
 
 ### 2.2.3 "Discover" your nodes
 
-Create a directory for putting our cluster configuration data into and copy the contents of [nodes.yaml](nodes.yaml) there:
+Create a directory for putting our cluster configuration data into and **copy the contents of [nodes.yaml](nodes.yaml) there**:
+
+> [!WARNING]
+> When writing YAML, it's important to be consistent with spacing. **It is recommended to use spaces for all indentation instead of tabs.**
 
 ```bash
 mkdir -p /opt/workdir/nodes
-vim /opt/workdir/nodes/nodes.yaml
+# edit /opt/workdir/nodes/nodes.yaml
 ```
 
 Run the following to populate SMD with the node information (make sure `DEMO_ACCESS_TOKEN` is set):
@@ -138,6 +141,8 @@ Run the following to populate SMD with the node information (make sure `DEMO_ACC
 ```bash
 ochami discover static -f yaml -d @/opt/workdir/nodes/nodes.yaml
 ```
+
+There should be no output for the above command.
 
 ### 2.2.4 Checkpoint
 
@@ -215,16 +220,42 @@ cd /opt/workdir/images
 
 ### 2.3.2 Install and Configure `regctl`
 
+> [!NOTE]
+> Make sure you are running the below commands as the `rocky` user and not using `sudo` or a root shell. `regctl` configs are _only_ user-level configs (meaning they live in the running user's home directory) and we want to make sure they get read.
+
 ```bash
 curl -L https://github.com/regclient/regclient/releases/latest/download/regctl-linux-amd64 > regctl && sudo mv regctl /usr/local/bin/regctl && sudo chmod 755 /usr/local/bin/regctl
 /usr/local/bin/regctl registry set --tls disabled demo.openchami.cluster:5000
 ```
 
+Make sure the config got set:
+
+```bash
+cat ~/.regctl/config.json 
+```
+
+The output should be:
+
+```json
+{
+  "hosts": {
+    "demo.openchami.cluster:5000": {
+      "tls": "disabled",
+      "hostname": "demo.openchami.cluster:5000",
+      "reqConcurrent": 3
+    }
+  }
+}
+```
+
 ### 2.3.3 Install and Configure S3 Client
 
-`s3cmd` was installed during the AWS setup, so we just need to create a user config file:
+> [!NOTE]
+> Make sure you are running the below commands as the `rocky` user and not using `sudo` or a root shell. `s3cmd` configs are _only_ user-level configs (meaning they live in the running user's home directory) and we want to make sure they get read.
 
-**/home/rocky/.s3cfg**
+`s3cmd` was installed during the AWS setup, so we just need to create a user config file.
+
+**Edit: `/home/rocky/.s3cfg`**
 
 ```ini
 # Setup endpoint
@@ -250,9 +281,19 @@ s3cmd mb s3://boot-images
 s3cmd setacl s3://boot-images --acl-public
 ```
 
+You should see the following output:
+
+```
+Bucket 's3://efi/' created
+s3://efi/: ACL set to Public  
+Bucket 's3://boot-images/' created
+s3://boot-images/: ACL set to Public  
+```
+
 Set the policy to allow public downloads from minio's boot-images bucket:
 
-**`public-read-boot.json`**
+**Edit: `/opt/workdir/s3-public-read-boot.json`**
+
 ```json
 {
   "Version":"2012-10-17",
@@ -267,7 +308,8 @@ Set the policy to allow public downloads from minio's boot-images bucket:
 }
 ```
 
-**`public-read-efi.json`**
+**Edit: `/opt/workdir/s3-public-read-efi.json`**
+
 ```json
 {
   "Version":"2012-10-17",
@@ -282,13 +324,20 @@ Set the policy to allow public downloads from minio's boot-images bucket:
 }
 ```
 ```bash
-s3cmd setpolicy public-read-boot.json s3://boot-images \
+s3cmd setpolicy /opt/workdir/s3-public-read-boot.json s3://boot-images \
     --host=172.16.0.254:9000 \
     --host-bucket=172.16.0.254:9000
 
-s3cmd setpolicy public-read-efi.json s3://efi \
+s3cmd setpolicy /opt/workdir/s3-public-read-efi.json s3://efi \
     --host=172.16.0.254:9000 \
     --host-bucket=172.16.0.254:9000
+```
+
+You should see the following command output:
+
+```
+s3://boot-images/: Policy updated
+s3://efi/: Policy updated
 ```
 
 We should see the two that got created with `s3cmd ls`:
@@ -302,14 +351,21 @@ We should see the two that got created with `s3cmd ls`:
 
 Our image builder speeds iteration by encouraging the admin to compose bootable images by layering one image on top of another.  Below are two definitions for images.  Both are bootable and can be used with image-builder.  `base.yaml` starts from an empty container and adds a minmal set of common packages including the kernel.  `compute.yaml` doesn't have to rebuild everything in the base container.  Instead, it just references it and overlays it's own files on top to add more creature comforts necessary for HPC nodes.
 
+Let's create a working directory for out image configs:
+
+```bash
+mkdir -p /opt/workdir/images
+```
+
 ### 2.4.1 Configure The Base Image
 
-**base.yaml**
+**Edit: `/opt/workdir/images/rocky-base-9.yaml`**
+
 ```yaml
 options:
   layer_type: 'base'
   name: 'rocky-base'
-  publish_tags: '9.5'
+  publish_tags: '9'
   pkg_manager: 'dnf'
   parent: 'scratch'
   publish_registry: 'demo.openchami.cluster:5000/demo'
@@ -339,36 +395,73 @@ packages:
 
 cmds:
   - cmd: 'dracut --add "dmsquash-live livenet network-manager" --kver $(basename /lib/modules/*) -N -f --logfile /tmp/dracut.log 2>/dev/null'
-    loglevel: INFO
   - cmd: 'echo DRACUT LOG:; cat /tmp/dracut.log'
-    loglevel: INFO
 ```
+
+Notice that we push to the OCI registry, but not S3. This is because we will not be booting this image directly but will be using it as a parent layer for our base compute image, which we will build later on.
 
 ### 2.4.2 Build the Base Image
 
-Ensure you have copied the files above into the `/opt/workdr/images` directory before running the image-build commands
+After creating the base image config above, let's build it:
 
 ```bash
-podman run --rm --device /dev/fuse --network host -v /opt/workdir/images/base.yaml:/home/builder/config.yaml ghcr.io/openchami/image-build:latest image-build --config config.yaml --log-level DEBUG
+podman run --rm --device /dev/fuse --network host -v /opt/workdir/images/rocky-base-9.yaml:/home/builder/config.yaml ghcr.io/openchami/image-build:latest image-build --config config.yaml --log-level DEBUG
 ```
 
-Verify that the image has been created and stored in the registry
+> [!NOTE]
+> Messages prefixed with `ERROR` mean that these messages are being emitted at the "error" log level and aren't _necessarily_ errors.
+
+This will take a good chunk of time (~10 minutes or so) since we are building an entire Linux filesystem from scratch. At the end, we should see:
+
+```
+-------------------BUILD LAYER--------------------
+pushing layer rocky-base to demo.openchami.cluster:5000/demo/rocky-base:9
+```
+
+After the build completes, verify that the image has been created and stored in the registry:
 
 ```bash
 regctl repo ls demo.openchami.cluster:5000
 ```
 
+We should see:
+
+```
+demo/rocky-base
+```
+
+We can query this to verify that our "9.5" tag got pushed:
+
+```
+regctl tag ls demo.openchami.cluster:5000/demo/rocky-base
+```
+
+We should see:
+
+```
+9
+```
+
+> [!TIP]
+> Since this is an OCI image, it can be inspected like one. Try it out:
+> ```
+> podman run --tls-verify=false --rm -it demo.openchami.cluster:5000/demo/rocky-base:9 bash
+> ```
+
 ### 2.4.3 Configure the Base Compute Image
 
-**compute.yaml**
+Now, let's create the base compute image that will use the base image we just built before as the parent layer. In the compute image layer, we are taking the stock Rocky 9.5 image and adding packages that will be common for all compute nodes.
+
+**Edit: `/opt/workdir/images/compute-base-rocky9.yaml`**
+
 ```yaml
 options:
   layer_type: 'base'
   name: 'compute-base'
   publish_tags:
-    - '9.5'
+    - 'rocky9'
   pkg_manager: 'dnf'
-  parent: 'demo.openchami.cluster:5000/demo/rocky-base:9.5'
+  parent: 'demo.openchami.cluster:5000/demo/rocky-base:9'
   registry_opts_pull:
     - '--tls-verify=false'
 
@@ -402,34 +495,85 @@ packages:
   - figlet
 ```
 
+Notice that this time, we push both to the OCI registry _and_ S3. We will be using this image _both_ as a parent layer to subsequent images _and_ to boot nodes directly.
+
 ### 2.4.4 Build the Compute Image
 
+Let's build the base compute image:
+
 ```bash
-podman run --rm --device /dev/fuse --network host -e S3_ACCESS=admin -e S3_SECRET=admin123 -v /opt/workdir/images/compute.yaml:/home/builder/config.yaml ghcr.io/openchami/image-build:latest image-build --config config.yaml --log-level DEBUG
+podman run --rm --device /dev/fuse --network host -e S3_ACCESS=admin -e S3_SECRET=admin123 -v /opt/workdir/images/compute-base-rocky9.yaml:/home/builder/config.yaml ghcr.io/openchami/image-build:latest image-build --config config.yaml --log-level DEBUG
 ```
 
-Verify that the image has been created and stored in the registry
+This won't take as long as the base image since we are only installing packages on top of the already-built filesystem. This time, since we are pushing to S3 (and we passed `--log-level DEBUG`) we will see _a lot_ of S3 output. We should see in the output:
+
+```
+Pushing /var/tmp/tmpda2ddyh0/rootfs as compute/base/rocky9.6-compute-base-rocky9 to boot-images
+pushing layer compute-base to demo.openchami.cluster:5000/demo/compute-base:rocky9
+```
+
+Verify that the image has been created and stored in the registry:
 
 ```bash
 regctl repo ls demo.openchami.cluster:5000
 ```
 
+We should see both of our images now:
+
+```
+demo/compute-base
+demo/rocky-base
+```
+
+We should see the tag of our new `demo/compute-base` image:
+
+```
+regctl tag ls demo.openchami.cluster:5000/demo/compute-base
+```
+
+The output should be:
+
+```
+rocky9
+```
+
+We should also see our image, kernel, and initramfs in S3:
+
+```
+s3cmd ls -Hr s3://boot-images | grep compute/base
+```
+
+The output should akin to:
+
+```
+2025-06-13 00:04  1356M  s3://boot-images/compute/base/rocky9.6-compute-base-rocky9
+2025-06-13 00:03    78M  s3://boot-images/efi-images/compute/base/initramfs-5.14.0-570.21.1.el9_6.x86_64.img
+2025-06-13 00:03    14M  s3://boot-images/efi-images/compute/base/vmlinuz-5.14.0-570.21.1.el9_6.x86_64
+```
+
+- SquashFS image: `s3://boot-images/compute/base/rocky9.6-compute-base-rocky9`
+- Initramfs: `s3://boot-images/efi-images/compute/base/initramfs-5.14.0-570.21.1.el9_6.x86_64.img`
+- Kernel: `s3://boot-images/efi-images/compute/base/vmlinuz-5.14.0-570.21.1.el9_6.x86_64`
+
 ### 2.4.5 Configure the Debug Image
 
-**/opt/workdir/images/compute-debug-rocky9.yaml**
+Before we boot an image, let's build a debug image that is based off of the base compute image. The images we've built so far don't contain users (these can be created using post-boot configuration via cloud-init). This image will contain a user with a known password which can be logged into via the serial console. This will be useful later on when debugging potential post-boot configuration issues (e.g. SSH keys weren't provisioned and so login is impossible).
+
+**Edit: `/opt/workdir/images/compute-debug-rocky9.yaml`**
+
 ```yaml
 options:
   layer_type: base
   name: compute-debug
   publish_tags:
-    - 'rocky9.5'
+    - 'rocky9'
   pkg_manager: dnf
-  parent: '172.16.0.254:5000/openchami/compute-base:rocky9.5'
+  parent: '172.16.0.254:5000/demo/compute-base:rocky9'
   registry_opts_pull:
     - '--tls-verify=false'
 
   # Publish to local S3
-  publish_s3: 'http://172.16.0.254:9090'
+  publish_s3: 'http://172.16.0.254:9000'
   s3_prefix: 'compute/debug/'
   s3_bucket: 'boot-images'
 
@@ -438,27 +582,25 @@ packages:
 
 cmds:
   - cmd: "useradd -mG wheel -p '$6$VHdSKZNm$O3iFYmRiaFQCemQJjhfrpqqV7DdHBi5YpY6Aq06JSQpABPw.3d8PQ8bNY9NuZSmDv7IL/TsrhRJ6btkgKaonT.' testuser"
-    loglevel: INFO
 ```
 
-### 2.4.6 Build the Debug Image
+If you have the time (or have questions) on the image builder config format, take a look at the [image-builder reference](images.md). Let's take a minute to draw attention to what our debug image config does:
 
-The images we've built so far don't contain any users.  We'll create those using cloud-init in a later step, but leaves us with no way to verify that the images are valid or to troubleshoot cloud-init.  We'll need to create our own new layer.  Follow the examples above and review the [image-builder reference](images.md), creating `compute-debug.yaml` as the debug image specification.
-
-
-- Use the base compute image as the parent (don't forget to change the image name):
+- Use the base compute image as the parent, pull it from the registry without TLS, and call the new image "compute-debug":
 
   ```yaml
   name: 'compute-debug'
-  parent: 'demo.openchami.cluster:5000/demo/compute-base:9.5'
+  parent: '172.16.0.254:5000/demo/compute-base:rocky9'
   registry_opts_pull:
     - '--tls-verify=false'
   ```
 
-- Push the image to the `compute/debug` prefix:
+- Push the image to `http://172.16.0.254:9000/boot-images/compute/debug/` in S3:
 
   ```yaml
+  publish_s3: 'http://172.16.0.254:9000'
   s3_prefix: 'compute/debug/'
+  s3_bucket: 'boot-images'
   ```
 
 - Create a `testuser` user (password is `testuser`):
@@ -469,15 +611,16 @@ The images we've built so far don't contain any users.  We'll create those using
 
   cmds:
     - cmd: "useradd -mG wheel -p '$6$VHdSKZNm$O3iFYmRiaFQCemQJjhfrpqqV7DdHBi5YpY6Aq06JSQpABPw.3d8PQ8bNY9NuZSmDv7IL/TsrhRJ6btkgKaonT.' testuser"
-      loglevel: INFO
   ```
 
   This will be the user we will login to the console as.
 
+### 2.4.6 Build the Debug Image
+
 Build this image:
 
 ```bash
-podman run --rm --device /dev/fuse -e S3_ACCESS=admin -e S3_SECRET=admin123 -v /opt/workdir/images/compute-debug.yaml:/home/builder/config.yaml ghcr.io/openchami/image-build:latest image-build --config config.yaml --log-level DEBUG
+podman run --rm --device /dev/fuse -e S3_ACCESS=admin -e S3_SECRET=admin123 -v /opt/workdir/images/compute-debug-rocky9.yaml:/home/builder/config.yaml ghcr.io/openchami/image-build:latest image-build --config config.yaml --log-level DEBUG
 ```
 
 ### 2.4.7 Verify Boot Artifact Creation
@@ -488,14 +631,18 @@ Once finished, we should see the debug image artifacts show up in S3:
 s3cmd ls -Hr s3://boot-images/
 ```
 
+We should see output akin to (note that our base image is not here because we didn't push it to S3, only the registry):
+
 ```
-2025-04-22 15:48  1284M  s3://boot-images/compute/base/rocky9.5-compute-base-9.5
-2025-04-22 17:28  1284M  s3://boot-images/compute/debug/rocky9.5-compute-debug-9.5
-2025-04-22 15:48    75M  s3://boot-images/efi-images/compute/base/initramfs-5.14.0-503.38.1.el9_5.x86_64.img
-2025-04-22 15:48    13M  s3://boot-images/efi-images/compute/base/vmlinuz-5.14.0-503.38.1.el9_5.x86_64
-2025-04-22 17:28    75M  s3://boot-images/efi-images/compute/debug/initramfs-5.14.0-503.38.1.el9_5.x86_64.img
-2025-04-22 17:28    13M  s3://boot-images/efi-images/compute/debug/vmlinuz-5.14.0-503.38.1.el9_5.x86_64
+2025-06-13 00:04  1356M  s3://boot-images/compute/base/rocky9.6-compute-base-rocky9
+2025-06-13 00:13  1356M  s3://boot-images/compute/debug/rocky9.6-compute-debug-rocky9
+2025-06-13 00:03    78M  s3://boot-images/efi-images/compute/base/initramfs-5.14.0-570.21.1.el9_6.x86_64.img
+2025-06-13 00:03    14M  s3://boot-images/efi-images/compute/base/vmlinuz-5.14.0-570.21.1.el9_6.x86_64
+2025-06-13 00:12    78M  s3://boot-images/efi-images/compute/debug/initramfs-5.14.0-570.21.1.el9_6.x86_64.img
+2025-06-13 00:12    14M  s3://boot-images/efi-images/compute/debug/vmlinuz-5.14.0-570.21.1.el9_6.x86_64
 ```
+
+We should see a kernel, initramfs, and SquashFS for each image we built.
 
 > [!NOTE]
 > Each time an image pushed to S3, three items are pushed:
@@ -506,20 +653,26 @@ s3cmd ls -Hr s3://boot-images/
 >
 > Make sure you select the right one when setting boot parameters (make sure the S3 prefixes match).
 
-We will be using the following pieces of the debug URLs for the boot setup in the next section.  Ensure that you read them from your own s3 output which may be different than it was at the time of writing.
+We will be using the URLs (everthing after `s3://`) for the debug boot artifacts next, so use:
 
-- `boot-images/compute/debug/rocky9.5-compute-debug-9.5`
-- `boot-images/efi-images/compute/debug/initramfs-<REPLACE WITH ACTUAL KERNEL VERSION>.el9_5.x86_64.img`
-- `boot-images/efi-images/compute/debug/vmlinuz-<REPLACE WITH ACTUAL KERNEL VERSION>.el9_5.x86_64`
+```bash
+s3cmd ls -Hr s3://boot-images | grep compute/debug
+```
+
+to fetch them and copy them somewhere. E.g:
+
+- `boot-images/compute/debug/rocky9.6-compute-debug-9`
+- `boot-images/efi-images/compute/debug/initramfs-<REPLACE WITH ACTUAL KERNEL VERSION>.el9_6.x86_64.img`
+- `boot-images/efi-images/compute/debug/vmlinuz-<REPLACE WITH ACTUAL KERNEL VERSION>.el9_6.x86_64`
+
+Keep these handy!
 
 🛑 ***STOP HERE***
 ---
 
 ## 2.5 Managing Boot Parameters
 
-The `ochami` tool gives us a convenient interface to changing boot parameters through IaC.  We store the desired configuration in a file and apply it with a command.
-
-
+The `ochami` tool gives us a convenient interface to changing boot parameters through IaC (Infrastructure as Code).  We store the desired configuration in a file and apply it with a command.
 
 To set boot parameters, we need to pass:
 
@@ -529,18 +682,36 @@ To set boot parameters, we need to pass:
    2. URI to initrd file
    3. Kernel command line arguments
 
+   ***OR:***
+
+   1. A file containing the boot parameter data (we will be using this method)
+
 ### 2.5.1 Create the Boot Configuration
 
-> [!TIP]
-> Your file will not look like the one below due to differences in kernel versions over time.
-> Be sure to update with the output of `s3cmd ls` as appropriate
+Create a directory for our boot configs:
 
-Create `/opt/workdir/nodes/boot-debug.yaml`:
+```bash
+mkdir -p /opt/workdir/boot
+```
+
+Then, edit the file below where:
+
+- `kernel` is the kernel URL. It starts with `http://172.16.0.254:9000/` and ends with the kernel path that we copied from the `s3cmd` output earlier (everything past `s3://`)
+- `initrd` is the initramfs URL. It starts with `http://172.16.0.254:9000/` and ends with the initramfs path that we copied from the `s3cmd` output earlier (everything past `s3://`)
+- `params` is the kernel command line arguments. Copy the ones from the line below, **but change the `root=` parameter to point to the SquashFS image**
+  - The format is `root=live:http://172.16.0.254:9000/` concatenated with the path to the SquashFS image obtained from `s3cmd` eariler (everything past `s3://`)
+- `macs` is the list of MAC addresses corresponding to the boot interface for our virtual compute nodes. These can be verbatim.
+
+**Edit: `/opt/workdir/boot/boot-compute-debug.yaml`**
+
+> [!WARNING]
+> Your file will not look like the one below due to differences in kernel versions over time.
+> Be sure to update with the output of `s3cmd ls` as stated above!
 
 ```yaml
-kernel: 'http://172.16.0.254:9000/boot-images/efi-images/compute/debug/vmlinuz-5.14.0-503.38.1.el9_5.x86_64'
-initrd: 'http://172.16.0.254:9000/boot-images/efi-images/compute/debug/initramfs-5.14.0-503.38.1.el9_5.x86_64.img'
-params: 'nomodeset ro root=live:http://172.16.0.254:9000/boot-images/compute/debug/rocky9.5-compute-debug-9.5 ip=dhcp overlayroot=tmpfs overlayroot_cfgdisk=disabled apparmor=0 selinux=0 console=ttyS0,115200 ip6=off cloud-init=enabled ds=nocloud-net;s=http://172.16.0.254:8081/cloud-init'
+kernel: 'http://172.16.0.254:9000/boot-images/efi-images/compute/debug/vmlinuz-5.14.0-570.21.1.el9_6.x86_64'
+initrd: 'http://172.16.0.254:9000/boot-images/efi-images/compute/debug/initramfs-5.14.0-570.21.1.el9_6.x86_64.img'
+params: 'nomodeset ro root=live:http://172.16.0.254:9000/boot-images/compute/debug/rocky9.6-compute-debug-rocky9 ip=dhcp overlayroot=tmpfs overlayroot_cfgdisk=disabled apparmor=0 selinux=0 console=ttyS0,115200 ip6=off cloud-init=enabled ds=nocloud-net;s=http://172.16.0.254:8081/cloud-init'
 macs:
   - 52:54:00:be:ef:01
   - 52:54:00:be:ef:02
@@ -551,11 +722,47 @@ macs:
 ### 2.5.2 Set the Boot Configuration
 
 > [!NOTE]
-> `ochami` supports both `add` and `set`.  The difference is idempotency.  If using the `add` command, `bss` will reject replacing an existing boot configuration
+> `ochami` supports both `add` and `set`.  The difference is idempotency.  If using the `add` command, `bss` will reject replacing an existing boot configuration.
 
 ```bash
-ochami bss boot params set -f yaml -d @/opt/workdir/nodes/boot-debug.yaml
+ochami bss boot params set -f yaml -d @/opt/workdir/boot/boot-compute-debug.yaml
 ```
+
+Verify that the parameters were set correctly with:
+
+```bash
+ochami bss boot params get -F yaml
+```
+
+The output should be akin to:
+
+```yaml
+- cloud-init:
+    meta-data: null
+    phone-home:
+        fqdn: ""
+        hostname: ""
+        instance_id: ""
+        pub_key_dsa: ""
+        pub_key_ecdsa: ""
+        pub_key_rsa: ""
+    user-data: null
+  initrd: http://172.16.0.254:9000/boot-images/efi-images/compute/debug/initramfs-5.14.0-570.21.1.el9_6.x86_64.img
+  kernel: http://172.16.0.254:9000/boot-images/efi-images/compute/debug/vmlinuz-5.14.0-570.21.1.el9_6.x86_64
+  macs:
+    - 52:54:00:be:ef:01
+    - 52:54:00:be:ef:02
+    - 52:54:00:be:ef:03
+    - 52:54:00:be:ef:04
+    - 52:54:00:be:ef:05
+  params: nomodeset ro root=live:http://172.16.0.254:9000/boot-images/compute/debug/rocky9.6-compute-debug-rocky9 ip=dhcp overlayroot=tmpfs overlayroot_cfgdisk=disabled apparmor=0 selinux=0 console=ttyS0,115200 ip6=off cloud-init=enabled ds=nocloud-net;s=http://172.16.0.254:8081/cloud-init
+```
+
+The things to check are:
+
+- `initrd` URL points to debug initrd (try `curl`ing it to make sure it works)
+- `kernel` URL points to debug kernel (try `curl`ing it to make sure it works)
+- `root=live:` URL points to debug image (try `curl`ing it to make sure it works)
 
 ## 2.6 Boot the Compute Node with the Debug Image
 
@@ -573,26 +780,72 @@ sudo virt-install \
   --graphics none \
   --console pty,target_type=serial \
   --boot network,hd \
+  --boot loader=/usr/share/OVMF/OVMF_CODE.secboot.fd,loader.readonly=yes,loader.type=pflash,nvram.template=/usr/share/OVMF/OVMF_VARS.fd,loader_secure=no \
   --virt-type kvm
 ```
 
 > [!TIP]
-> The default virt-install doesn't show anything during boot.
-> To get the full details of the bios, replace the standard `--boot` flag for `virt-install` to one that activates the console before the Linux Kernel through a bootloader
-> ```bash
->  --boot loader=/usr/share/OVMF/OVMF_CODE.secboot.fd,loader.readonly=yes,loader.type=pflash,nvram.template=/var/lib/libvirt/qemu/nvram/compute1.fd,loader_secure=no \
-> ```
-> This requires setting up a virtual "nvram" bootloader that must be managed in addition to the virtual instance itself.
-> Create the nvram with the following command:
-> ```bash
->  sudo cp /usr/share/OVMF/OVMF_VARS.fd /var/lib/libvirt/qemu/nvram/compute1.fd
-> ```
+> If you need to destroy and restart the VM, first exit the console with `Ctrl`+`]`. Then:
+> 1. Shut down ("destroy") the VM:
+>    ```
+>    sudo virsh destroy compute1
+>    ```
+> 2. Undefine the VM:
+>    ```
+>    sudo virsh undefine --nvram compute1
+>    ```
+> 3. Rerun the `virt-install` command above.
+
+Watch it boot. First, it should PXE:
+
+```
+>>Start PXE over IPv4.
+  Station IP address is 172.16.0.1
+
+  Server IP address is 172.16.0.254
+  NBP filename is ipxe-x86_64.efi
+  NBP filesize is 1079296 Bytes
+ Downloading NBP file...
+
+  NBP file downloaded successfully.
+BdsDxe: loading Boot0001 "UEFI PXEv4 (MAC:525400BEEF01)" from PciRoot(0x0)/Pci(0x1,0x0)/Pci(0x0,0x0)/MAC(525400BEEF01,0x1)/IPv4(0.0.0.0,0x0,DHCP,0.0.0.0,0.0.0.0,0.0.0.0)
+BdsDxe: starting Boot0001 "UEFI PXEv4 (MAC:525400BEEF01)" from PciRoot(0x0)/Pci(0x1,0x0)/Pci(0x0,0x0)/MAC(525400BEEF01,0x1)/IPv4(0.0.0.0,0x0,DHCP,0.0.0.0,0.0.0.0,0.0.0.0)
+iPXE initialising devices...
+autoexec.ipxe... Not found (https://ipxe.org/2d12618e)
+
+
+
+iPXE 1.21.1+ (ge9a2) -- Open Source Network Boot Firmware -- https://ipxe.org
+Features: DNS HTTP HTTPS iSCSI TFTP VLAN SRP AoE EFI Menu
+```
+
+Then, we should see it get it's boot script from TFTP, then BSS (the `/boot/v1` URL), then download it's kernel/initramfs and boot into Linux.
+
+```
+Configuring (net0 52:54:00:be:ef:01)...... ok
+tftp://172.16.0.254:69/config.ipxe... ok
+Booting from http://172.16.0.254:8081/boot/v1/bootscript?mac=52:54:00:be:ef:01
+http://172.16.0.254:8081/boot/v1/bootscript... ok
+http://172.16.0.254:9000/boot-images/efi-images/compute/debug/vmlinuz-5.14.0-570.21.1.el9_6.x86_64... ok
+http://172.16.0.254:9000/boot-images/efi-images/compute/debug/initramfs-5.14.0-570.21.1.el9_6.x86_64.img... ok
+```
+
+During Linux boot, we should see the SquashFS image get downloaded and loaded.
+
+```
+[    2.169210] dracut-initqueue[545]:   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+[    2.170532] dracut-initqueue[545]:                                  Dload  Upload   Total   Spent    Left  Speed
+100 1356M  100 1356M    0     0  1037M      0  0:00:01  0:00:01 --:--:-- 1038M
+[    3.627908] squashfs: version 4.0 (2009/01/31) Phillip Lougher
+```
+
+Cloud-Init (and maybe SSH) will fail (since we haven't set it up yet), but that's okay for now.
 
 ### 2.6.1 Log In to the Compute Node
 
 ```
-Rocky Linux 9.5 (Blue Onyx)
-Kernel 5.14.0-503.38.1.el9_5.x86_64 on an x86_64
+Rocky Linux 9.6 (Blue Onyx)
+Kernel 5.14.0-570.21.1.el9_6.x86_64 on x86_64
 
 nid0001 login:
 ```
@@ -635,7 +888,7 @@ mkdir -p /opt/workdir/cloud-init
 cd /opt/workdir/cloud-init
 ```
 
-Now, create a new SSH key on the head node and follow all of the prompts:
+Now, create a new SSH key on the head node and press **Enter** for all of the prompts:
 
 ```bash
 ssh-keygen -t ed25519
@@ -647,7 +900,9 @@ The new that was generated can be found in `~/.ssh/id_ed25519.pub`. We're going 
 cat ~/.ssh/id_ed25519.pub
 ```
 
-Create `defaults.yaml` with the following content replacing the `<YOUR SSH KEY GOES HERE>` line with your SSH key from above:
+Create `ci-defaults.yaml` with the following content, replacing the `<YOUR SSH KEY GOES HERE>` line with your SSH public key from above:
+
+**Edit: `/opt/workdir/cloud-init/ci-defaults.yaml`**
 
 ```yaml
 ---
@@ -662,13 +917,13 @@ short-name: "nid"
 Then, we set the cloud-init defaults using the `ochami` CLI:
 
 ```bash
-ochami cloud-init defaults set -f yaml -d @/opt/workdir/cloud-init/defaults.yaml
+ochami cloud-init defaults set -f yaml -d @/opt/workdir/cloud-init/ci-defaults.yaml
 ```
 
 e can verify that these values were set with:
 
 ```bash
-ochami cloud-init defaults get | jq
+ochami cloud-init defaults get -F json-pretty
 ```
 
 The output should be:
@@ -689,7 +944,9 @@ The output should be:
 
 Now, we need to set the cloud-init configuration for the `compute` group, which is the SMD group that all of our nodes are in. For now, we will create a simple config that only sets our SSH key.
 
-First, let's create a templated cloud-config file. Create `computes.yaml` with the following contents:
+First, let's create a templated cloud-config file. Create `ci-group-compute.yaml` with the following contents:
+
+**Edit: `/opt/workdir/cloud-init/ci-group-compute.yaml`**
 
 ```yaml
 - name: compute
@@ -713,7 +970,7 @@ First, let's create a templated cloud-config file. Create `computes.yaml` with t
 Now, we need to set this configuration for the compute group:
 
 ```bash
-ochami cloud-init group set -f yaml -d @/opt/workdir/cloud-init/computes.yaml
+ochami cloud-init group set -f yaml -d @/opt/workdir/cloud-init/ci-group-compute.yaml
 ```
 
 We can check that it got added with:
@@ -722,7 +979,21 @@ We can check that it got added with:
 ochami cloud-init group get config compute
 ```
 
-We should see the cloud-config file we created above print out.
+We should see the cloud-config file we created above print out:
+
+```yaml
+## template: jinja
+#cloud-config
+merge_how:
+- name: list
+  settings: [append]
+- name: dict
+  settings: [no_replace, recurse_list]
+users:
+  - name: root
+    ssh_authorized_keys: {{ ds.meta_data.instance_data.v1.public_keys }}
+disable_root: false
+```
 
 We can also check that the Jinja2 is rendering properly for a node. Let's see what the cloud-config would render to for our first compute node (x1000c0s0b0n0):
 
@@ -744,7 +1015,7 @@ merge_how:
   settings: [no_replace, recurse_list]
 users:
   - name: root
-    ssh_authorized_keys: ['ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKlJg... rocky@demo.openchami.cluster']
+    ssh_authorized_keys: ['<SSH_KEY>']
 ```
 
 ## 2.7.3 (_OPTIONAL_) Configure Node-Specific Meta-Data
@@ -762,37 +1033,29 @@ ochami cloud-init node set -d '[{"id":"x1000c0s0b0n0","local-hostname":"compute1
 We can examine the merged cloud-init meta-data for a node with:
 
 ```bash
-ochami cloud-init node get meta-data x1000c0s0b0n0 | jq
+ochami cloud-init node get meta-data x1000c0s0b0n0 -F yaml
 ```
 
-```json
-[
-  {
-    "cluster-name": "demo",
-    "hostname": "nid01",
-    "instance-id": "i-fd37994e",
-    "instance_data": {
-      "v1": {
-        "instance_id": "i-fd37994e",
-        "local_ipv4": "172.16.0.1",
-        "public_keys": [
-          "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKlJg... rocky@demo.openchami.cluster"
-        ],
-        "vendor_data": {
-          "cloud_init_base_url": "http://172.16.0.254:8081/cloud-init",
-          "cluster_name": "demo",
-          "groups": {
-            "compute": {
-              "Description": "compute group cloud-config template"
-            }
-          },
-          "version": "1.0"
-        }
-      }
-    },
-    "local-hostname": "compute1"
-  }
-]
+We should get something like:
+
+```yaml
+- cluster-name: demo
+  hostname: nid001
+  instance-id: i-3903b323
+  instance_data:
+    v1:
+        instance_id: i-3903b323
+        local_ipv4: 172.16.0.1
+        public_keys:
+            - <SSH_KEY>
+        vendor_data:
+            cloud_init_base_url: http://172.16.0.254:8081/cloud-init
+            cluster_name: demo
+            groups:
+                compute:
+                    Description: compute config
+            version: "1.0"
+  local-hostname: compute1
 ```
 
 This merges the cluster default, group, and node-specific meta-data.
@@ -827,17 +1090,19 @@ s3cmd ls -Hr s3://boot-images/ | awk '{print $4}' | grep base
 We should see:
 
 ```
-s3://boot-images/compute/base/rocky9.5-compute-base-9.5
-s3://boot-images/efi-images/compute/base/initramfs-5.14.0-503.38.1.el9_5.x86_64.img
-s3://boot-images/efi-images/compute/base/vmlinuz-5.14.0-503.38.1.el9_5.x86_64
+s3://boot-images/compute/base/rocky9.6-compute-base-rocky9
+s3://boot-images/efi-images/compute/base/initramfs-5.14.0-570.21.1.el9_6.x86_64.img
+s3://boot-images/efi-images/compute/base/vmlinuz-5.14.0-570.21.1.el9_6.x86_64
 ```
 
-We can copy `/opt/workdir/nodes/boot-debug.yaml` to `/opt/workdir/nodes/boot-compute.yaml` and make a few modifications. We need to modify the `kernel`, `initrd`, and `params` to point to the boot artifacts listed in S3 above:
+Let's create `boot-compute.yaml` with these values.
+
+**Edit: `/opt/workdir/boot/boot-compute.yaml`**
 
 ```yaml
-kernel: 'http://172.16.0.254:9000/boot-images/efi-images/compute/base/vmlinuz-5.14.0-503.38.1.el9_5.x86_64'
-initrd: 'http://172.16.0.254:9000/boot-images/efi-images/compute/base/initramfs-5.14.0-503.38.1.el9_5.x86_64.img'
-params: 'nomodeset ro root=live:http://172.16.0.254:9000/boot-images/compute/base/rocky9.5-compute-base-9.5 ip=dhcp overlayroot=tmpfs overlayroot_cfgdisk=disabled apparmor=0 selinux=0 console=ttyS0,115200 ip6=off cloud-init=enabled ds=nocloud-net;s=http://172.16.0.254:8081/cloud-init'
+kernel: 'http://172.16.0.254:9000/boot-images/efi-images/compute/base/vmlinuz-5.14.0-570.21.1.el9_6.x86_64'
+initrd: 'http://172.16.0.254:9000/boot-images/efi-images/compute/base/initramfs-5.14.0-570.21.1.el9_6.x86_64.img'
+params: 'nomodeset ro root=live:http://172.16.0.254:9000/boot-images/compute/base/rocky9.6-compute-base-rocky9 ip=dhcp overlayroot=tmpfs overlayroot_cfgdisk=disabled apparmor=0 selinux=0 console=ttyS0,115200 ip6=off cloud-init=enabled ds=nocloud-net;s=http://172.16.0.254:8081/cloud-init'
 macs:
   - 52:54:00:be:ef:01
   - 52:54:00:be:ef:02
@@ -846,16 +1111,42 @@ macs:
   - 52:54:00:be:ef:05
 ```
 
-We should only have to change `debug` to `base` since the images we built before should be similar. Then, we can modify the boot parameters with:
+We should only have to change `debug` to `base` compared to out debug boot configuration since the images we built before should be similar.
+
+Then, we can set these new parameters with:
 
 ```bash
-ochami bss boot params set -f yaml -d @/opt/workdir/nodes/boot-compute.yaml
+ochami bss boot params set -f yaml -d @/opt/workdir/boot/boot-compute.yaml
 ```
 
 Double-check that the params were updated if needed:
 
 ```bash
 ochami bss boot params get -f json-pretty
+```
+
+They should match the file above:
+
+```yaml
+- cloud-init:
+    meta-data: null
+    phone-home:
+        fqdn: ""
+        hostname: ""
+        instance_id: ""
+        pub_key_dsa: ""
+        pub_key_ecdsa: ""
+        pub_key_rsa: ""
+    user-data: null
+  initrd: http://172.16.0.254:9000/boot-images/efi-images/compute/base/initramfs-5.14.0-570.21.1.el9_6.x86_64.img
+  kernel: http://172.16.0.254:9000/boot-images/efi-images/compute/base/vmlinuz-5.14.0-570.21.1.el9_6.x86_64
+  macs:
+    - 52:54:00:be:ef:01
+    - 52:54:00:be:ef:02
+    - 52:54:00:be:ef:03
+    - 52:54:00:be:ef:04
+    - 52:54:00:be:ef:05
+  params: nomodeset ro root=live:http://172.16.0.254:9000/boot-images/compute/base/rocky9.6-compute-base-rocky9 ip=dhcp overlayroot=tmpfs overlayroot_cfgdisk=disabled apparmor=0 selinux=0 console=ttyS0,115200 ip6=off cloud-init=enabled ds=nocloud-net;s=http://172.16.0.254:8081/cloud-init
 ```
 
 ### 2.8.2 Booting the Compute Node
@@ -870,6 +1161,13 @@ Then, power cycle `compute1` and attach to the console to watch it boot:
 sudo virsh destroy compute1
 sudo virsh start --console compute1
 ```
+
+> [!TIP]
+> If you get:
+> ```
+> error: failed to get domain 'compute1'
+> ```
+> it may be that your VM is already undefined. Run the `virt-install` command above again to recreate it.
 
 Just like with the debug image, we should see the node:
 
@@ -920,7 +1218,7 @@ ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no root@172.16.0.1
 ```
 
 > [!TIP]
-> We don't store the SSH host key of the compute nodes because cloud-init regenerates it on each reboot. To permanently ignore, create `/etc/ssh/ssh_config.d/ignore.conf` with the following content:
+> We don't store the SSH host key of the compute nodes because cloud-init regenerates it on each reboot. To permanently ignore, create `/etc/ssh/ssh_config.d/ignore.conf` **on the head node (not the virtual compute)** with the following content:
 > ```
 > Match host=172.16.0.*
 >         UserKnownHostsFile=/dev/null
@@ -936,7 +1234,7 @@ Last login: Thu May 29 06:59:26 2025 from 172.16.0.254
 [root@compute1 ~]#
 ```
 
-Congratulations, you've just used OpenCHAMI to boot and login to a compute node1
+Congratulations, you've just used OpenCHAMI to boot and login to a compute node! 🎉
 
 🛑 ***STOP HERE***
 ---
