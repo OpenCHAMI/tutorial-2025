@@ -265,7 +265,7 @@ First, edit `SYSTEM_NAME`, `URLS_*`, and `BSS_IPXE_SERVER` in `/etc/openchami/co
 
 ```bash
 SYSTEM_NAME=demo
-SYSTEM_DOMAIN.openchami.cluster
+SYSTEM_DOMAIN=openchami.cluster
 URLS_SELF_ISSUER=https://demo.openchami.cluster/
 URLS_SELF_PUBLIC=https://demo.openchami.cluster/
 URLS_LOGIN=https://demo.openchami.cluster/login
