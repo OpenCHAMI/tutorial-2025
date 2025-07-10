@@ -259,7 +259,7 @@ sudo rpm -Uvh "$rpm_name"
 
 ## 1.5 Initialize/Trust the OpenCHAMI Certificate Auhority
 
-OpenCHAMI includes a minimal open source certificate authority from [Smallstep](https://smallstep.com/). Starting the `step-ca` service will initialize the CA certificate, which we can pull from the container and add to our host system's trust store so that all subsequent OpenCHAMI certificates will be trusted. The `acme-*` services included with OpenCHAMI handle the certificate rotation.
+OpenCHAMI includes a minimal open source certificate authority from [Smallstep](https://smallstep.com/). Starting the `step-ca` service will initialize the CA certificate, which we can pull from the container and add to our host system's trust store so that all subsequent OpenCHAMI certificates will be trusted. The `acme-*` services included with OpenCHAMI handle the certificate rotation. By default, the FQDN is set to the hostname of the system.
 
 First, start the certificate authority and make sure it starts correctly:
 
@@ -339,6 +339,12 @@ If a service fails because of another dependent service, use the following depen
 #### Certificates
 
 One common issue is with certificates. If TLS errors are occurring, **make sure the domain in the `acme-register.container` and `acme-deploy.container` files within `/etc/containers/systemd/` (argument to `-d` flag) match the cluster domain set in `/etc/hosts`.**
+
+Since the release RPM automatically sets the FQDN for you, it may be necessary to update it to the correct value.
+
+```bash
+openchami-certificate-update update demo.openchami.cluster
+```
 
 After ensuring the above or the error is of a different cause, regenerating the OpenCHAMI certificates can usually solve such issues. This can be done with:
 
