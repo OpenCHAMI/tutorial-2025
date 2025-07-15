@@ -261,7 +261,7 @@ sudo rpm -Uvh "$rpm_name"
 
 OpenCHAMI includes a minimal open source certificate authority from [Smallstep](https://smallstep.com/). Starting the `step-ca` service will initialize the CA certificate, which we can pull from the container and add to our host system's trust store so that all subsequent OpenCHAMI certificates will be trusted. The `acme-*` services included with OpenCHAMI handle the certificate rotation. By default, the FQDN is set to the hostname of the system.
 
-First, edit `SYSTEM_NAME`, `URLS_*`, and `BSS_IPXE_SERVER` in `/etc/openchami/configs/openchami.env` to use whatever name/domain/FQDN you’d like (e.g. demo.openchami.cluster). It should look something like this:
+First, edit `SYSTEM_NAME`, `URLS_*`, and `BSS_IPXE_SERVER` in `/etc/openchami/configs/openchami.env` to use whatever name/domain/FQDN you’d like. For this tutorial, we will use `demo.openchami.cluster` for this value.
 
 ```bash
 SYSTEM_NAME=demo
