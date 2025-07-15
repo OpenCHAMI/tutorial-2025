@@ -324,6 +324,13 @@ openchami.target
 ● └─step-ca.service
 ```
 
+> [!TIP]
+> If the `haproxy` container fails with the following error, try restarting the `opaal` and `haproxy` containers.
+> ```bash
+> Jul 15 01:29:27 happily-humble-loon.novalocal haproxy[363101]: [ALERT]    (3) : [/usr/local/etc/haproxy/haproxy.cfg:55] : 'server opaal/opaal' : could not resolve address 'opaal'.
+> Jul 15 01:29:27 happily-humble-loon.novalocal haproxy[363101]: [ALERT]    (3) : [/usr/local/etc/haproxy/haproxy.cfg:58] : 'server opaal-idp/opaal-idp' : could not resolve address 'opaal-idp'.
+> ```
+
 Check the **Troubleshooting** subsection below if issues arise.
 
 ### Troubleshooting
