@@ -818,6 +818,13 @@ autoexec.ipxe... Not found (https://ipxe.org/2d12618e)
 iPXE 1.21.1+ (ge9a2) -- Open Source Network Boot Firmware -- https://ipxe.org
 Features: DNS HTTP HTTPS iSCSI TFTP VLAN SRP AoE EFI Menu
 ```
+> [!TIP]
+> You may need to edit the `/etc/openchami/configs/coredhcp.yaml` config file and uncomment all the values if you see an error when booting.
+> ```bash
+> >>Start PXE over IPv4.
+>  PXE-E18: Server response timeout.
+> BdsDxe: failed to load Boot0001 "UEFI PXEv4 (MAC:525400BEEF01)" from PciRoot(0x0)/Pci(0x1,0x0)/Pci(0x0,0x0)/MAC(525400BEEF01,0x1)/IPv4(0.0.0.0,0x0,DHCP,0.0.0.0,0.0.0.0,0.0.0.0): Not Found
+> ```
 
 Then, we should see it get it's boot script from TFTP, then BSS (the `/boot/v1` URL), then download it's kernel/initramfs and boot into Linux.
 
