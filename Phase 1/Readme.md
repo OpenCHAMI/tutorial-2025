@@ -28,6 +28,7 @@
     - [1.3.4 Checkpoint](#134-checkpoint)
   - [🛑 ***STOP HERE***](#-stop-here)
   - [1.4 Install OpenCHAMI](#14-install-openchami)
+    - [1.4.1 Update `coredhcp` Configuration](#141-update-coredhcp-configuration)
   - [1.5 Initialize/Trust the OpenCHAMI Certificate Auhority](#15-initializetrust-the-openchami-certificate-auhority)
   - [1.6 Start OpenCHAMI](#16-start-openchami)
     - [Troubleshooting](#troubleshooting)
@@ -256,6 +257,32 @@ curl -L -o "$rpm_name" "$rpm_url"
 # Install the RPM
 sudo rpm -Uvh "$rpm_name"
 ```
+
+### 1.4.1 Update `coredhcp` Configuration
+
+The release RPM unpacks config files for many of the services including `coredhcp`. We need to edit the `/etc/openchami/configs/coredhcp.yaml` config file and uncomment all the values if you see an error when booting. The file should look like this:
+
+```
+server4:
+# You can configure the specific interfaces that you want OpenCHAMI to listen on by 
+# uncommenting the lines below and setting the interface
+  listen:
+    - "%virbr-openchami"
+  plugins:
+# You are able to set the IP address of the system in server_id as the place to look for a DHCP server
+# DNS is able to be set to whatever you want but it is much easier if you keep it set to the server IP
+# Router is also able to be set to whatever you network router address is 
+    - server_id: 172.16.0.254
+    - dns: 172.16.0.254
+    - router: 172.16.0.254
+    - netmask: 255.255.255.0
+# The lines below define where the system should assign ip addresses for systems that do not have
+# mac addresses stored in SMD
+    - coresmd: https://demo.openchami.cluster:8443 http://172.16.0.254:8081 /root_ca/root_ca.crt 30s 1h false
+    - bootloop: /tmp/coredhcp.db default 5m 172.16.0.200 172.16.0.250
+```
+
+This will allow the compute node later in the tutorial to request its PXE script.
 
 ## 1.5 Initialize/Trust the OpenCHAMI Certificate Auhority
 
