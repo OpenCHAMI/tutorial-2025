@@ -154,7 +154,7 @@ Volume=/data/s3:/data:Z
 
 # Ports
 PublishPort=9000:9000
-PublishPort=9091:9001
+PublishPort=9001:9001
 
 # Environemnt Variables
 Environment=MINIO_ROOT_USER=admin
