@@ -38,6 +38,7 @@
   - [1.7 Install and Configure OpenCHAMI Client](#17-install-and-configure-openchami-client)
     - [1.7.1 Installation](#171-installation)
     - [1.7.2 Configuration](#172-configuration)
+    - [1.7.3 Documentation](#173-documentation)
   - [1.8 Generating Authentication Token](#18-generating-authentication-token)
   - [1.9 Checkpoint](#19-checkpoint)
   - [🛑 ***STOP HERE***](#-stop-here-1)
@@ -479,6 +480,27 @@ We should get:
 > If TLS errors occur, see the [**Certificates**](#certificates) subsection within the [**Troubleshooting**](#troubleshooting) section above.
 
 Voilà!
+
+### 1.7.3 Documentation
+
+`ochami` comes with several manual pages. Run:
+
+```
+apropos ochami
+```
+
+and you'll see:
+
+```
+ochami (1)           - OpenCHAMI command line interface
+ochami-bss (1)       - Communicate with the Boot Script Service (BSS)
+ochami-cloud-init (1) - Communicate with the cloud-init server
+ochami-config (1)    - Manage configuration for ochami CLI
+ochami-config (5)    - ochami CLI configuration file
+ochami-discover (1)  - Populate SMD using a file
+ochami-pcs (1)       - Communicate with the Power Control Service (PCS)
+ochami-smd (1)       - Communicate with the State Management Database (SMD)
+```
 
 ## 1.8 Generating Authentication Token
 
