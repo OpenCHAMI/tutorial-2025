@@ -29,7 +29,7 @@
   - [🛑 ***STOP HERE***](#-stop-here)
   - [1.4 Install OpenCHAMI](#14-install-openchami)
     - [1.4.1 Update `coredhcp` Configuration](#141-update-coredhcp-configuration)
-  - [1.5 Initialize/Trust the OpenCHAMI Certificate Auhority](#15-initializetrust-the-openchami-certificate-auhority)
+  - [1.5 Configure Cluster FQDN for Certificates](#15-configure-cluster-fqdn-for-certificates)
   - [1.6 Start OpenCHAMI](#16-start-openchami)
     - [Troubleshooting](#troubleshooting)
       - [Dependency Issue](#dependency-issue)
@@ -284,51 +284,43 @@ server4:
 
 This will allow the compute node later in the tutorial to request its PXE script.
 
-## 1.5 Initialize/Trust the OpenCHAMI Certificate Auhority
+## 1.5 Configure Cluster FQDN for Certificates
 
-OpenCHAMI includes a minimal open source certificate authority from [Smallstep](https://smallstep.com/). Starting the `step-ca` service will initialize the CA certificate, which we can pull from the container and add to our host system's trust store so that all subsequent OpenCHAMI certificates will be trusted. The `acme-*` services included with OpenCHAMI handle the certificate rotation. By default, the FQDN is set to the hostname of the system.
+OpenCHAMI includes a minimal, open source certificate authority from [Smallstep](https://smallstep.com/) that is run via the `step-ca` service. The certificate generation and deployment happens as follows:
 
-First, edit `SYSTEM_NAME`, `URLS_*`, and `BSS_IPXE_SERVER` in `/etc/openchami/configs/openchami.env` to use whatever name/domain/FQDN you’d like. For this tutorial, we will use `demo.openchami.cluster` for this value.
+1. `step-ca.service` -- Generates the certificate authority certificate.
+2. `openchami-cert-trust.service` -- Copies the generated CA certificate to the host system and adds it to the system trust bundle.
+3. `acme-register.service` -- Issues a new certificate (derived from the CA certificate) for haproxy, the API gateway.
+4. `acme-deploy.service` -- Deploys the issued certificate to haproxy. Restarting this service will restart 1-3 as well.
 
-```bash
-SYSTEM_NAME=demo
-SYSTEM_DOMAIN=openchami.cluster
-URLS_SELF_ISSUER=https://demo.openchami.cluster/
-URLS_SELF_PUBLIC=https://demo.openchami.cluster/
-URLS_LOGIN=https://demo.openchami.cluster/login
-URLS_CONSENT=https://demo.openchami.cluster/consent
-URLS_LOGOUT=https://demo.openchami.cluster/logout
-BSS_IPXE_SERVER=demo.openchami.cluster
-```
+The `acme-*` services handle certificate rotation, and the `openchami-cert-renewal` service and Systemd timer do exactly this.
 
-Then, start the certificate authority and make sure it starts correctly:
-
-```bash
-sudo systemctl start step-ca
-systemctl status step-ca
-```
-
-Next, import the root certificate into the system trust bundle and update the trust bundle:
-
-```bash
-sudo podman run --rm --network openchami-cert-internal docker.io/curlimages/curl -sk https://step-ca:9000/roots.pem | sudo tee /etc/pki/ca-trust/source/anchors/ochami.pem
-sudo update-ca-trust
-```
-
-If all goes well, you should see a certificate be printed out:
+When OpenCHAMI is installed, the FQDN used for the certificates and services is set to the hostname of the system the package is installed on. We need to change this to `demo.openchami.cluster` which is what we will be using. The OpenCHAMI package provides us with a script to do this:
 
 ```
------BEGIN CERTIFICATE-----
-MIIBpTCCAUqgAwIBAgIRAJ8FxVEPomiX+V9j52lhqEwwCgYIKoZIzj0EAwIwMDES
-MBAGA1UEChMJT3BlbkNIQU1JMRowGAYDVQQDExFPcGVuQ0hBTUkgUm9vdCBDQTAe
-Fw0yNTA2MTIxMjU0NDhaFw0zNTA2MTAxMjU0NDhaMDAxEjAQBgNVBAoTCU9wZW5D
-SEFNSTEaMBgGA1UEAxMRT3BlbkNIQU1JIFJvb3QgQ0EwWTATBgcqhkjOPQIBBggq
-hkjOPQMBBwNCAAR5lRUWCeJA0TXPVcRLADqtOgsRXA25umd19OrOX2Yb4hQlhQXQ
-Vy/Hg5MyL9nmt8FA38/FqaQiiOkAs4OCcr5ko0UwQzAOBgNVHQ8BAf8EBAMCAQYw
-EgYDVR0TAQH/BAgwBgEB/wIBATAdBgNVHQ4EFgQUdTwBbbvhfzRA8pHQzTv1xMrj
-zAQwCgYIKoZIzj0EAwIDSQAwRgIhAKbk2sAVvMmdc3p72J9reyHcu7XUemAJawq+
-E6o5TR7JAiEAt2xMS3/eTuUU7wbsoy8HSmsSpc11aAguQoOMbQ9Q8DI=
------END CERTIFICATE-----
+sudo openchami-certificate-update update demo.openchami.cluster
+```
+
+You should see the following output:
+
+```
+Changed FQDN to demo.openchami.cluster
+Either restart all of the OpenCHAMI services:
+
+  sudo systemctl restart openchami.target
+
+or run the following to just regenerate/redeploy the certificates:
+
+  sudo systemctl restart acme-deploy
+
+```
+
+The script tells we can either restart all of the OpenCHAMI services (`openchami.target`) or restart `acme-deploy` to regenerate the certificates. Since we are running OpenCHAMI for the first time, we will be running the former, but **not yet**.
+
+To see what the script changed, run:
+
+```
+grep -RnE 'demo|openchami\.cluster' /etc/openchami/configs/openchami.env /etc/containers/systemd/
 ```
 
 We will be able to verify if this worked shortly.
