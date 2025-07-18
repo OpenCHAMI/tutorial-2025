@@ -344,13 +344,19 @@ If the services started correctly, the second command above should yield:
 
 ```
 openchami.target
+● ├─acme-deploy.service
+● ├─acme-register.service
+● ├─bss-init.service
 ● ├─bss.service
 ● ├─cloud-init-server.service
 ● ├─coresmd.service
 ● ├─haproxy.service
+● ├─hydra-gen-jwks.service
+● ├─hydra-migrate.service
 ● ├─hydra.service
 ● ├─opaal-idp.service
 ● ├─opaal.service
+● ├─openchami-cert-trust.service
 ● ├─postgres.service
 ● ├─smd.service
 ● └─step-ca.service
@@ -506,13 +512,19 @@ OpenCHAMI tokens last for an hour by default. Whenever one needs to be regenerat
    should yield:
    ```bash
    openchami.target
+   ● ├─acme-deploy.service
+   ● ├─acme-register.service
+   ● ├─bss-init.service
    ● ├─bss.service
    ● ├─cloud-init-server.service
    ● ├─coresmd.service
    ● ├─haproxy.service
+   ● ├─hydra-gen-jwks.service
+   ● ├─hydra-migrate.service
    ● ├─hydra.service
    ● ├─opaal-idp.service
    ● ├─opaal.service
+   ● ├─openchami-cert-trust.service
    ● ├─postgres.service
    ● ├─smd.service
    ● └─step-ca.service
