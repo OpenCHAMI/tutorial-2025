@@ -332,8 +332,8 @@ OpenCHAMI runs as a collection of containers. Podman's integration with Systemd 
 ```bash
 sudo systemctl start openchami.target
 systemctl list-dependencies openchami.target
-
 ```
+
 > [!TIP]
 > We can use `watch` to dynamically see the services starting:
 > ```
@@ -369,11 +369,11 @@ openchami.target
 > Jul 15 01:29:27 happily-humble-loon.novalocal haproxy[363101]: [ALERT]    (3) : [/usr/local/etc/haproxy/haproxy.cfg:58] : 'server opaal-idp/opaal-idp' : could not resolve address 'opaal-idp'.
 > ```
 
-Check the **Troubleshooting** subsection below if issues arise.
+Check the [**Troubleshooting**](#troubleshooting) subsection below if issues arise.
 
 ### Troubleshooting
 
-If a service fails (if 'x' appears next to a service in the `systemctl list-dependencies` command), try using `journalctl -eu <service_name>` to look at the logs
+If a service fails (if `×` appears next to a service in the `systemctl list-dependencies` command), try using `journalctl -eu <service_name>` to look at the logs
 
 #### Dependency Issue
 
@@ -388,19 +388,18 @@ One common issue is with certificates. If TLS errors are occurring, **make sure 
 Since the release RPM automatically sets the FQDN for you, it may be necessary to update it to the correct value.
 
 ```bash
-openchami-certificate-update update demo.openchami.cluster
+sudo openchami-certificate-update update demo.openchami.cluster
 ```
 
 After ensuring the above or the error is of a different cause, regenerating the OpenCHAMI certificates can usually solve such issues. This can be done with:
 
 ```
 sudo systemctl restart acme-deploy
-sudo systemctl restart haproxy
 ```
 
 ### 1.6.1 Service Configuration
 
-The OpenCHAMI release RPM is created with sensible default configurations for this tutorial and all configuration files are included in the `/etc/openchami` directory.  To understand each one in detail, review the [service_configuration](service_configuration.md) instructions
+The OpenCHAMI release RPM is created with sensible default configurations for this tutorial and all configuration files are included in the `/etc/openchami` directory.  To understand each one in detail, review the [**Service Configuration**](service_configuration.md) instructions
 
 ## 1.7 Install and Configure OpenCHAMI Client
 
@@ -477,7 +476,7 @@ We should get:
 ```
 
 > [!TIP]
-> If TLS errors occur, see the [**Certificates**](#certificates) subsection within the **Troubleshooting** section above.
+> If TLS errors occur, see the [**Certificates**](#certificates) subsection within the [**Troubleshooting**](#troubleshooting) section above.
 
 Voilà!
 
@@ -541,7 +540,7 @@ OpenCHAMI tokens last for an hour by default. Whenever one needs to be regenerat
    ```
    should yield:
    ```
-   {"bss-status":"running"}
+   {"code":0,"message":"HSM is healthy"}
    ```
 
 🛑 ***STOP HERE***
