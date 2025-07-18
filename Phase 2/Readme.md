@@ -842,7 +842,7 @@ During Linux boot, we should see the SquashFS image get downloaded and loaded.
 Cloud-Init (and maybe SSH) will fail (since we haven't set it up yet), but that's okay for now.
 
 > [!TIP]
-> If you see this error below when trying to boot the compute node, make sure you have editted the `/etc/openchami/configs/coredhcp.yaml` config file in section 1.4.1 and restart `coredhcp` with `systemctl restart coredhcp`.
+> If you see this error below when trying to boot the compute node, make sure you have editted the `/etc/openchami/configs/coredhcp.yaml` config file in section 1.4.1 and restart `coredhcp` with `systemctl restart coresmd`.
 > 
 > ```bash
 > >>Start PXE over IPv4.
