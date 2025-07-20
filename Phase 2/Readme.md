@@ -1132,7 +1132,7 @@ ochami bss boot params set -f yaml -d @/opt/workdir/boot/boot-compute-base.yaml
 Double-check that the params were updated if needed:
 
 ```bash
-ochami bss boot params get -f json-pretty
+ochami bss boot params get -F yaml
 ```
 
 They should match the file above:
