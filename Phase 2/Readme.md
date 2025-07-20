@@ -548,14 +548,14 @@ s3cmd ls -Hr s3://boot-images | grep compute/base
 The output should akin to:
 
 ```
-2025-06-13 00:04  1356M  s3://boot-images/compute/base/rocky9.6-compute-base-rocky9
-2025-06-13 00:03    78M  s3://boot-images/efi-images/compute/base/initramfs-5.14.0-570.21.1.el9_6.x86_64.img
-2025-06-13 00:03    14M  s3://boot-images/efi-images/compute/base/vmlinuz-5.14.0-570.21.1.el9_6.x86_64
+2025-07-20 17:01  1436M  s3://boot-images/compute/base/rocky9.6-compute-base-rocky9
+2025-07-20 17:01    82M  s3://boot-images/efi-images/compute/base/initramfs-5.14.0-570.26.1.el9_6.x86_64.img
+2025-07-20 17:01    14M  s3://boot-images/efi-images/compute/base/vmlinuz-5.14.0-570.26.1.el9_6.x86_64
 ```
 
 - SquashFS image: `s3://boot-images/compute/base/rocky9.6-compute-base-rocky9`
-- Initramfs: `s3://boot-images/efi-images/compute/base/initramfs-5.14.0-570.21.1.el9_6.x86_64.img`
-- Kernel: `s3://boot-images/efi-images/compute/base/vmlinuz-5.14.0-570.21.1.el9_6.x86_64`
+- Initramfs: `s3://boot-images/efi-images/compute/base/initramfs-5.14.0-570.26.1.el9_6.x86_64.img`
+- Kernel: `s3://boot-images/efi-images/compute/base/vmlinuz-5.14.0-570.26.1.el9_6.x86_64`
 
 ### 2.4.5 Configure the Debug Image
 
@@ -636,12 +636,12 @@ s3cmd ls -Hr s3://boot-images/
 We should see output akin to (note that our base image is not here because we didn't push it to S3, only the registry):
 
 ```
-2025-06-13 00:04  1356M  s3://boot-images/compute/base/rocky9.6-compute-base-rocky9
-2025-06-13 00:13  1356M  s3://boot-images/compute/debug/rocky9.6-compute-debug-rocky9
-2025-06-13 00:03    78M  s3://boot-images/efi-images/compute/base/initramfs-5.14.0-570.21.1.el9_6.x86_64.img
-2025-06-13 00:03    14M  s3://boot-images/efi-images/compute/base/vmlinuz-5.14.0-570.21.1.el9_6.x86_64
-2025-06-13 00:12    78M  s3://boot-images/efi-images/compute/debug/initramfs-5.14.0-570.21.1.el9_6.x86_64.img
-2025-06-13 00:12    14M  s3://boot-images/efi-images/compute/debug/vmlinuz-5.14.0-570.21.1.el9_6.x86_64
+2025-07-20 17:01  1436M  s3://boot-images/compute/base/rocky9.6-compute-base-rocky9
+2025-07-20 17:05  1437M  s3://boot-images/compute/debug/rocky9.6-compute-debug-rocky9
+2025-07-20 17:01    82M  s3://boot-images/efi-images/compute/base/initramfs-5.14.0-570.26.1.el9_6.x86_64.img
+2025-07-20 17:01    14M  s3://boot-images/efi-images/compute/base/vmlinuz-5.14.0-570.26.1.el9_6.x86_64
+2025-07-20 17:05    82M  s3://boot-images/efi-images/compute/debug/initramfs-5.14.0-570.26.1.el9_6.x86_64.img
+2025-07-20 17:05    14M  s3://boot-images/efi-images/compute/debug/vmlinuz-5.14.0-570.26.1.el9_6.x86_64
 ```
 
 We should see a kernel, initramfs, and SquashFS for each image we built.
@@ -711,8 +711,8 @@ Then, edit the file below where:
 > Be sure to update with the output of `s3cmd ls` as stated above!
 
 ```yaml
-kernel: 'http://172.16.0.254:9000/boot-images/efi-images/compute/debug/vmlinuz-5.14.0-570.21.1.el9_6.x86_64'
-initrd: 'http://172.16.0.254:9000/boot-images/efi-images/compute/debug/initramfs-5.14.0-570.21.1.el9_6.x86_64.img'
+kernel: 'http://172.16.0.254:9000/boot-images/efi-images/compute/debug/vmlinuz-5.14.0-570.26.1.el9_6.x86_64'
+initrd: 'http://172.16.0.254:9000/boot-images/efi-images/compute/debug/initramfs-5.14.0-570.26.1.el9_6.x86_64.img'
 params: 'nomodeset ro root=live:http://172.16.0.254:9000/boot-images/compute/debug/rocky9.6-compute-debug-rocky9 ip=dhcp overlayroot=tmpfs overlayroot_cfgdisk=disabled apparmor=0 selinux=0 console=ttyS0,115200 ip6=off cloud-init=enabled ds=nocloud-net;s=http://172.16.0.254:8081/cloud-init'
 macs:
   - 52:54:00:be:ef:01
@@ -749,8 +749,8 @@ The output should be akin to:
         pub_key_ecdsa: ""
         pub_key_rsa: ""
     user-data: null
-  initrd: http://172.16.0.254:9000/boot-images/efi-images/compute/debug/initramfs-5.14.0-570.21.1.el9_6.x86_64.img
-  kernel: http://172.16.0.254:9000/boot-images/efi-images/compute/debug/vmlinuz-5.14.0-570.21.1.el9_6.x86_64
+  initrd: http://172.16.0.254:9000/boot-images/efi-images/compute/debug/initramfs-5.14.0-570.26.1.el9_6.x86_64.img
+  kernel: http://172.16.0.254:9000/boot-images/efi-images/compute/debug/vmlinuz-5.14.0-570.26.1.el9_6.x86_64
   macs:
     - 52:54:00:be:ef:01
     - 52:54:00:be:ef:02
@@ -828,8 +828,8 @@ Configuring (net0 52:54:00:be:ef:01)...... ok
 tftp://172.16.0.254:69/config.ipxe... ok
 Booting from http://172.16.0.254:8081/boot/v1/bootscript?mac=52:54:00:be:ef:01
 http://172.16.0.254:8081/boot/v1/bootscript... ok
-http://172.16.0.254:9000/boot-images/efi-images/compute/debug/vmlinuz-5.14.0-570.21.1.el9_6.x86_64... ok
-http://172.16.0.254:9000/boot-images/efi-images/compute/debug/initramfs-5.14.0-570.21.1.el9_6.x86_64.img... ok
+http://172.16.0.254:9000/boot-images/efi-images/compute/debug/vmlinuz-5.14.0-570.26.1.el9_6.x86_64... ok
+http://172.16.0.254:9000/boot-images/efi-images/compute/debug/initramfs-5.14.0-570.26.1.el9_6.x86_64.img... ok
 ```
 
 During Linux boot, we should see the SquashFS image get downloaded and loaded.
@@ -1110,9 +1110,8 @@ Let's create `boot-compute.yaml` with these values.
 
 **Edit: `/opt/workdir/boot/boot-compute.yaml`**
 
-```yaml
-kernel: 'http://172.16.0.254:9000/boot-images/efi-images/compute/base/vmlinuz-5.14.0-570.21.1.el9_6.x86_64'
-initrd: 'http://172.16.0.254:9000/boot-images/efi-images/compute/base/initramfs-5.14.0-570.21.1.el9_6.x86_64.img'
+kernel: 'http://172.16.0.254:9000/boot-images/efi-images/compute/base/vmlinuz-5.14.0-570.26.1.el9_6.x86_64'
+initrd: 'http://172.16.0.254:9000/boot-images/efi-images/compute/base/initramfs-5.14.0-570.26.1.el9_6.x86_64.img'
 params: 'nomodeset ro root=live:http://172.16.0.254:9000/boot-images/compute/base/rocky9.6-compute-base-rocky9 ip=dhcp overlayroot=tmpfs overlayroot_cfgdisk=disabled apparmor=0 selinux=0 console=ttyS0,115200 ip6=off cloud-init=enabled ds=nocloud-net;s=http://172.16.0.254:8081/cloud-init'
 macs:
   - 52:54:00:be:ef:01
@@ -1149,8 +1148,8 @@ They should match the file above:
         pub_key_ecdsa: ""
         pub_key_rsa: ""
     user-data: null
-  initrd: http://172.16.0.254:9000/boot-images/efi-images/compute/base/initramfs-5.14.0-570.21.1.el9_6.x86_64.img
-  kernel: http://172.16.0.254:9000/boot-images/efi-images/compute/base/vmlinuz-5.14.0-570.21.1.el9_6.x86_64
+  initrd: http://172.16.0.254:9000/boot-images/efi-images/compute/base/initramfs-5.14.0-570.26.1.el9_6.x86_64.img
+  kernel: http://172.16.0.254:9000/boot-images/efi-images/compute/base/vmlinuz-5.14.0-570.26.1.el9_6.x86_64
   macs:
     - 52:54:00:be:ef:01
     - 52:54:00:be:ef:02
@@ -1211,8 +1210,8 @@ Configuring (net0 52:54:00:be:ef:01)...... ok
 tftp://172.16.0.254:69/config.ipxe... ok
 Booting from http://172.16.0.254:8081/boot/v1/bootscript?mac=52:54:00:be:ef:01
 http://172.16.0.254:8081/boot/v1/bootscript... ok
-http://172.16.0.254:9000/boot-images/efi-images/compute/base/vmlinuz-5.14.0-503.38.1.el9_5.x86_64... ok
-http://172.16.0.254:9000/boot-images/efi-images/compute/base/initramfs-5.14.0-503.38.1.el9_5.x86_64.img... ok
+http://172.16.0.254:9000/boot-images/efi-images/compute/base/vmlinuz-5.14.0-570.26.1.el9_6.x86_64... ok
+http://172.16.0.254:9000/boot-images/efi-images/compute/base/initramfs-5.14.0-570.26.1.el9_6.x86_64.img... ok
 ```
 
 > [!WARNING]
