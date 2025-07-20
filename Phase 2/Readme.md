@@ -130,6 +130,8 @@ Create a directory for putting our cluster configuration data into and **copy th
 
 > [!WARNING]
 > When writing YAML, it's important to be consistent with spacing. **It is recommended to use spaces for all indentation instead of tabs.**
+>
+> When pasting, you may have to configure your editor to not apply indentation rules (`:set paste` in Vim, `:set nopaste` to switch back).
 
 ```bash
 mkdir -p /opt/workdir/nodes
