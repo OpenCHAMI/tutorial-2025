@@ -22,7 +22,7 @@ Jetstream2 offers the ability to stand up multiple instances based on the same t
 
 ### Cloud-Init
 
-Just like OpenCHAMI, Jetstream2 provides teh ability to inject cloud-config data at runtime.  In the "Advanced Options`" section of the template or instance definition, you will find a text box marked **Boot Script**. Underneath the following header:
+Just like OpenCHAMI, Jetstream2 provides the ability to inject cloud-config data at runtime.  In the "Advanced Options`" section of the template or instance definition, you will find a text box marked **Boot Script**. Underneath the following header:
 
 ```
 --=================exosphere-user-data====
