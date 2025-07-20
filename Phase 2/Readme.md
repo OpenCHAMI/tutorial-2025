@@ -1108,7 +1108,7 @@ s3://boot-images/efi-images/compute/base/vmlinuz-5.14.0-570.21.1.el9_6.x86_64
 
 Let's create `boot-compute.yaml` with these values.
 
-**Edit: `/opt/workdir/boot/boot-compute.yaml`**
+**Edit: `/opt/workdir/boot/boot-compute-base.yaml`**
 
 kernel: 'http://172.16.0.254:9000/boot-images/efi-images/compute/base/vmlinuz-5.14.0-570.26.1.el9_6.x86_64'
 initrd: 'http://172.16.0.254:9000/boot-images/efi-images/compute/base/initramfs-5.14.0-570.26.1.el9_6.x86_64.img'
@@ -1126,7 +1126,7 @@ We should only have to change `debug` to `base` compared to out debug boot confi
 Then, we can set these new parameters with:
 
 ```bash
-ochami bss boot params set -f yaml -d @/opt/workdir/boot/boot-compute.yaml
+ochami bss boot params set -f yaml -d @/opt/workdir/boot/boot-compute-base.yaml
 ```
 
 Double-check that the params were updated if needed:
