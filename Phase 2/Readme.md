@@ -387,13 +387,13 @@ package_groups:
   - 'Development Tools'
 
 packages:
-  - kernel
-  - wget
-  - dracut-live
-  - cloud-init
   - chrony
+  - cloud-init
+  - dracut-live
+  - kernel
   - rsyslog
   - sudo
+  - wget
 
 cmds:
   - cmd: 'dracut --add "dmsquash-live livenet network-manager" --kver $(basename /lib/modules/*) -N -f --logfile /tmp/dracut.log 2>/dev/null'
@@ -486,15 +486,15 @@ repos:
     gpg: 'https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-9'
 
 packages:
-  - vim
+  - boxes
+  - cowsay
+  - figlet
+  - fortune-mod
+  - git
   - nfs-utils
   - tcpdump
   - traceroute
-  - git
-  - fortune-mod
-  - cowsay
-  - boxes
-  - figlet
+  - vim
 ```
 
 Notice that this time, we push both to the OCI registry _and_ S3. We will be using this image _both_ as a parent layer to subsequent images _and_ to boot nodes directly.
