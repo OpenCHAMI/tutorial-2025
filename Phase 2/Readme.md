@@ -449,6 +449,7 @@ We should see:
 > ```
 > podman run --tls-verify=false --rm -it demo.openchami.cluster:5000/demo/rocky-base:9 bash
 > ```
+> **NOTE:** Make sure to exit out of this shell before continuing.
 
 ### 2.4.3 Configure the Base Compute Image
 
