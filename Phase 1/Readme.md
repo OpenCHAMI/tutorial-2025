@@ -132,6 +132,9 @@ echo "172.16.0.254 demo.openchami.cluster" | sudo tee -a /etc/hosts > /dev/null
 
 > [!NOTE]
 > Files in this section need to be edited as root!
+>
+> If you accidentally edit a file as your normal user and need to save it as root and you're using Vim,
+> invoke (in Normal mode): `:w !sudo tee %`.
 
 ### 1.3.1 S3
 
@@ -139,7 +142,7 @@ For our S3 gateway, we use [Minio](https://github.com/minio/minio) which we'll d
 
 Like all the OpenCHAMI services, we create a quadlet definition in `/etc/containers/systemd/` for our S3 service.
 
-**Edit: `/etc/containers/systemd/minio.container`**
+**Edit as root: `/etc/containers/systemd/minio.container`**
 
 ```ini
 [Unit]
@@ -175,7 +178,7 @@ WantedBy=multi-user.target
 
 For our OCI container registry, we use the standard docker registry.  Once again, deployed as a quadlet.
 
-**Edit: `/etc/containers/systemd/registry.container`**
+**Edit as root: `/etc/containers/systemd/registry.container`**
 
 ```ini
 [Unit]

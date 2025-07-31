@@ -101,7 +101,7 @@ Static discovery happens via `ochami` by giving it a static discovery file. "Dis
     - **name:** A human-readable name for this IP address for this interface.
     - **ip_addr:** An IP address for this interface.
 
-**Example:**
+**Example (do not copy or use):**
 ```yaml
 - name: node01
   nid: 1
@@ -128,14 +128,10 @@ Static discovery happens via `ochami` by giving it a static discovery file. "Dis
 
 Create a directory for putting our cluster configuration data into and **copy the contents of [nodes.yaml](nodes.yaml) there**:
 
-> [!WARNING]
-> When writing YAML, it's important to be consistent with spacing. **It is recommended to use spaces for all indentation instead of tabs.**
->
-> When pasting, you may have to configure your editor to not apply indentation rules (`:set paste` in Vim, `:set nopaste` to switch back).
-
 ```bash
 mkdir -p /opt/workdir/nodes
-# edit /opt/workdir/nodes/nodes.yaml
+curl -o /opt/workdir/nodes/nodes.yaml https://raw.githubusercontent.com/OpenCHAMI/tutorial-2025/refs/heads/main/Phase%202/nodes.yaml
+cat /opt/workdir/nodes/nodes.yaml  # Verify contents
 ```
 
 Run the following to populate SMD with the node information (make sure `DEMO_ACCESS_TOKEN` is set):
@@ -257,7 +253,7 @@ The output should be:
 
 `s3cmd` was installed during the AWS setup, so we just need to create a user config file.
 
-**Edit: `/home/rocky/.s3cfg`**
+**Edit as normal user: `/home/rocky/.s3cfg`**
 
 ```ini
 # Setup endpoint
@@ -294,7 +290,7 @@ s3://boot-images/: ACL set to Public
 
 Set the policy to allow public downloads from minio's boot-images bucket:
 
-**Edit: `/opt/workdir/s3-public-read-boot.json`**
+**Edit as normal user: `/opt/workdir/s3-public-read-boot.json`**
 
 ```json
 {
@@ -310,7 +306,7 @@ Set the policy to allow public downloads from minio's boot-images bucket:
 }
 ```
 
-**Edit: `/opt/workdir/s3-public-read-efi.json`**
+**Edit as normal user: `/opt/workdir/s3-public-read-efi.json`**
 
 ```json
 {
@@ -361,7 +357,12 @@ mkdir -p /opt/workdir/images
 
 ### 2.4.1 Configure The Base Image
 
-**Edit: `/opt/workdir/images/rocky-base-9.yaml`**
+> [!WARNING]
+> When writing YAML, it's important to be consistent with spacing. **It is recommended to use spaces for all indentation instead of tabs.**
+>
+> When pasting, you may have to configure your editor to not apply indentation rules (`:set paste` in Vim, `:set nopaste` to switch back).
+
+**Edit as normal user: `/opt/workdir/images/rocky-base-9.yaml`**
 
 ```yaml
 options:
@@ -449,12 +450,13 @@ We should see:
 > ```
 > podman run --tls-verify=false --rm -it demo.openchami.cluster:5000/demo/rocky-base:9 bash
 > ```
+> **NOTE:** Make sure to exit out of this shell before continuing.
 
 ### 2.4.3 Configure the Base Compute Image
 
 Now, let's create the base compute image that will use the base image we just built before as the parent layer. In the compute image layer, we are taking the stock Rocky 9.5 image and adding packages that will be common for all compute nodes.
 
-**Edit: `/opt/workdir/images/compute-base-rocky9.yaml`**
+**Edit as normal user: `/opt/workdir/images/compute-base-rocky9.yaml`**
 
 ```yaml
 options:
@@ -561,7 +563,7 @@ The output should akin to:
 
 Before we boot an image, let's build a debug image that is based off of the base compute image. The images we've built so far don't contain users (these can be created using post-boot configuration via cloud-init). This image will contain a user with a known password which can be logged into via the serial console. This will be useful later on when debugging potential post-boot configuration issues (e.g. SSH keys weren't provisioned and so login is impossible).
 
-**Edit: `/opt/workdir/images/compute-debug-rocky9.yaml`**
+**Edit as normal user: `/opt/workdir/images/compute-debug-rocky9.yaml`**
 
 ```yaml
 options:
@@ -704,7 +706,7 @@ Then, edit the file below where:
   - The format is `root=live:http://172.16.0.254:9000/` concatenated with the path to the SquashFS image obtained from `s3cmd` eariler (everything past `s3://`)
 - `macs` is the list of MAC addresses corresponding to the boot interface for our virtual compute nodes. These can be verbatim.
 
-**Edit: `/opt/workdir/boot/boot-compute-debug.yaml`**
+**Edit as normal user: `/opt/workdir/boot/boot-compute-debug.yaml`**
 
 > [!WARNING]
 > Your file will not look like the one below due to differences in kernel versions over time.
@@ -913,7 +915,7 @@ cat ~/.ssh/id_ed25519.pub
 
 Create `ci-defaults.yaml` with the following content, replacing the `<YOUR SSH KEY GOES HERE>` line with your SSH public key from above:
 
-**Edit: `/opt/workdir/cloud-init/ci-defaults.yaml`**
+**Edit as normal user: `/opt/workdir/cloud-init/ci-defaults.yaml`**
 
 ```yaml
 ---
@@ -957,7 +959,7 @@ Now, we need to set the cloud-init configuration for the `compute` group, which 
 
 First, let's create a templated cloud-config file. Create `ci-group-compute.yaml` with the following contents:
 
-**Edit: `/opt/workdir/cloud-init/ci-group-compute.yaml`**
+**Edit as normal user: `/opt/workdir/cloud-init/ci-group-compute.yaml`**
 
 ```yaml
 - name: compute
@@ -1108,7 +1110,7 @@ s3://boot-images/efi-images/compute/base/vmlinuz-5.14.0-570.21.1.el9_6.x86_64
 
 Let's create `boot-compute.yaml` with these values.
 
-**Edit: `/opt/workdir/boot/boot-compute-base.yaml`**
+**Edit as normal user: `/opt/workdir/boot/boot-compute-base.yaml`**
 
 kernel: 'http://172.16.0.254:9000/boot-images/efi-images/compute/base/vmlinuz-5.14.0-570.26.1.el9_6.x86_64'
 initrd: 'http://172.16.0.254:9000/boot-images/efi-images/compute/base/initramfs-5.14.0-570.26.1.el9_6.x86_64.img'
