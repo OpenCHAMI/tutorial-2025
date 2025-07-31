@@ -101,7 +101,7 @@ Static discovery happens via `ochami` by giving it a static discovery file. "Dis
     - **name:** A human-readable name for this IP address for this interface.
     - **ip_addr:** An IP address for this interface.
 
-**Example:**
+**Example (do not copy or use):**
 ```yaml
 - name: node01
   nid: 1
