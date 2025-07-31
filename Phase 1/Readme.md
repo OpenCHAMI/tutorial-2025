@@ -132,6 +132,9 @@ echo "172.16.0.254 demo.openchami.cluster" | sudo tee -a /etc/hosts > /dev/null
 
 > [!NOTE]
 > Files in this section need to be edited as root!
+>
+> If you accidentally edit a file as your normal user and need to save it as root and you're using Vim,
+> invoke (in Normal mode): `:w !sudo tee %`.
 
 ### 1.3.1 S3
 
