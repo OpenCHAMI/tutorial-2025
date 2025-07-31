@@ -139,7 +139,7 @@ For our S3 gateway, we use [Minio](https://github.com/minio/minio) which we'll d
 
 Like all the OpenCHAMI services, we create a quadlet definition in `/etc/containers/systemd/` for our S3 service.
 
-**Edit: `/etc/containers/systemd/minio.container`**
+**Edit as root: `/etc/containers/systemd/minio.container`**
 
 ```ini
 [Unit]
@@ -175,7 +175,7 @@ WantedBy=multi-user.target
 
 For our OCI container registry, we use the standard docker registry.  Once again, deployed as a quadlet.
 
-**Edit: `/etc/containers/systemd/registry.container`**
+**Edit as root: `/etc/containers/systemd/registry.container`**
 
 ```ini
 [Unit]
