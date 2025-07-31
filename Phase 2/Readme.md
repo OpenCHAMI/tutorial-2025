@@ -128,14 +128,10 @@ Static discovery happens via `ochami` by giving it a static discovery file. "Dis
 
 Create a directory for putting our cluster configuration data into and **copy the contents of [nodes.yaml](nodes.yaml) there**:
 
-> [!WARNING]
-> When writing YAML, it's important to be consistent with spacing. **It is recommended to use spaces for all indentation instead of tabs.**
->
-> When pasting, you may have to configure your editor to not apply indentation rules (`:set paste` in Vim, `:set nopaste` to switch back).
-
 ```bash
 mkdir -p /opt/workdir/nodes
-# edit /opt/workdir/nodes/nodes.yaml
+curl -o /opt/workdir/nodes/nodes.yaml https://raw.githubusercontent.com/OpenCHAMI/tutorial-2025/refs/heads/main/Phase%202/nodes.yaml
+cat /opt/workdir/nodes/nodes.yaml  # Verify contents
 ```
 
 Run the following to populate SMD with the node information (make sure `DEMO_ACCESS_TOKEN` is set):
@@ -360,6 +356,11 @@ mkdir -p /opt/workdir/images
 ```
 
 ### 2.4.1 Configure The Base Image
+
+> [!WARNING]
+> When writing YAML, it's important to be consistent with spacing. **It is recommended to use spaces for all indentation instead of tabs.**
+>
+> When pasting, you may have to configure your editor to not apply indentation rules (`:set paste` in Vim, `:set nopaste` to switch back).
 
 **Edit: `/opt/workdir/images/rocky-base-9.yaml`**
 
