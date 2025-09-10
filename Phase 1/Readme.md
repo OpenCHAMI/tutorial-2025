@@ -264,26 +264,28 @@ sudo rpm -Uvh "$rpm_name"
 
 ### 1.4.1 Update `coredhcp` Configuration
 
-The release RPM unpacks config files for many of the services including `coredhcp`. We need to edit the `/etc/openchami/configs/coredhcp.yaml` config file and uncomment all the values if you see an error when booting. The file should look like this:
+The release RPM unpacks config files for many of the services including `coredhcp`. We need to edit the `/etc/openchami/configs/coredhcp.yaml` config file and edit it for our setup:
 
 ```
+cat <<EOF | sudo tee /etc/openchami/configs/coredhcp.yaml
 server4:
-# You can configure the specific interfaces that you want OpenCHAMI to listen on by 
-# uncommenting the lines below and setting the interface
+  # You can configure the specific interfaces that you want OpenCHAMI to listen on by
+  # uncommenting the lines below and setting the interface
   listen:
     - "%virbr-openchami"
   plugins:
-# You are able to set the IP address of the system in server_id as the place to look for a DHCP server
-# DNS is able to be set to whatever you want but it is much easier if you keep it set to the server IP
-# Router is also able to be set to whatever you network router address is 
+    # You are able to set the IP address of the system in server_id as the place to look for a DHCP server
+    # DNS is able to be set to whatever you want but it is much easier if you keep it set to the server IP
+    # Router is also able to be set to whatever you network router address is
     - server_id: 172.16.0.254
     - dns: 172.16.0.254
     - router: 172.16.0.254
     - netmask: 255.255.255.0
-# The lines below define where the system should assign ip addresses for systems that do not have
-# mac addresses stored in SMD
+    # The lines below define where the system should assign ip addresses for systems that do not have
+    # mac addresses stored in SMD
     - coresmd: https://demo.openchami.cluster:8443 http://172.16.0.254:8081 /root_ca/root_ca.crt 30s 1h false
     - bootloop: /tmp/coredhcp.db default 5m 172.16.0.200 172.16.0.250
+EOF
 ```
 
 This will allow the compute node later in the tutorial to request its PXE script.
@@ -428,15 +430,15 @@ ochami version
 The output should look something like:
 
 ```
-Version:    0.3.4
-Tag:        v0.3.4
+Version:    0.5.3
+Tag:        v0.5.3
 Branch:     HEAD
-Commit:     78a2b046518839bbd8283804905e1648dd739927
+Commit:     caf429e9d1ab52f54269401c21a75c967fe62fb3
 Git State:  clean
-Date:       2025-06-02T21:19:21Z
-Go:         go1.24.3
+Date:       2025-08-27T20:35:04Z
+Go:         go1.25.0
 Compiler:   gc
-Build Host: fv-az1758-958
+Build Host: pkrvmccyg1gnepe
 Build User: runner
 ```
 
@@ -470,7 +472,7 @@ log:
 Now we should be able to communicate with our cluster. Let's make sure by checking the status of one of the services:
 
 ```bash
-ochami bss status
+ochami bss service status
 ```
 
 We should get:
@@ -554,14 +556,14 @@ OpenCHAMI tokens last for an hour by default. Whenever one needs to be regenerat
    ● └─step-ca.service
    ```
 1. ```
-   ochami bss status
+   ochami bss service status
    ```
    should yield:
    ```
    {"bss-status":"running"}
    ```
 1. ```
-   ochami smd status
+   ochami smd service status
    ```
    should yield:
    ```

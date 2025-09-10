@@ -42,6 +42,7 @@
     - [2.4.5 Configure the Debug Image](#245-configure-the-debug-image)
     - [2.4.6 Build the Debug Image](#246-build-the-debug-image)
     - [2.4.7 Verify Boot Artifact Creation](#247-verify-boot-artifact-creation)
+    - [2.4.8 Simplify Image Build Command](#248-simplify-image-build-command)
   - [🛑 ***STOP HERE***](#-stop-here-1)
   - [2.5 Managing Boot Parameters](#25-managing-boot-parameters)
     - [2.5.1 Create the Boot Configuration](#251-create-the-boot-configuration)
@@ -229,7 +230,7 @@ curl -L https://github.com/regclient/regclient/releases/latest/download/regctl-l
 Make sure the config got set:
 
 ```bash
-cat ~/.regctl/config.json 
+cat ~/.regctl/config.json
 ```
 
 The output should be:
@@ -283,9 +284,9 @@ You should see the following output:
 
 ```
 Bucket 's3://efi/' created
-s3://efi/: ACL set to Public  
+s3://efi/: ACL set to Public
 Bucket 's3://boot-images/' created
-s3://boot-images/: ACL set to Public  
+s3://boot-images/: ACL set to Public
 ```
 
 Set the policy to allow public downloads from minio's boot-images bucket:
@@ -408,7 +409,7 @@ Notice that we push to the OCI registry, but not S3. This is because we will not
 After creating the base image config above, let's build it:
 
 ```bash
-podman run --rm --device /dev/fuse --network host -v /opt/workdir/images/rocky-base-9.yaml:/home/builder/config.yaml ghcr.io/openchami/image-build:latest image-build --config config.yaml --log-level DEBUG
+podman run --rm --device /dev/fuse --network host -v /opt/workdir/images/rocky-base-9.yaml:/home/builder/config.yaml ghcr.io/openchami/image-build-el9:v0.1.1 image-build --config config.yaml --log-level DEBUG
 ```
 
 > [!NOTE]
@@ -506,7 +507,7 @@ Notice that this time, we push both to the OCI registry _and_ S3. We will be usi
 Let's build the base compute image:
 
 ```bash
-podman run --rm --device /dev/fuse --network host -e S3_ACCESS=admin -e S3_SECRET=admin123 -v /opt/workdir/images/compute-base-rocky9.yaml:/home/builder/config.yaml ghcr.io/openchami/image-build:latest image-build --config config.yaml --log-level DEBUG
+podman run --rm --device /dev/fuse --network host -e S3_ACCESS=admin -e S3_SECRET=admin123 -v /opt/workdir/images/compute-base-rocky9.yaml:/home/builder/config.yaml ghcr.io/openchami/image-build-el9:v0.1.1 image-build --config config.yaml --log-level DEBUG
 ```
 
 This won't take as long as the base image since we are only installing packages on top of the already-built filesystem. This time, since we are pushing to S3 (and we passed `--log-level DEBUG`) we will see _a lot_ of S3 output. We should see in the output:
@@ -547,7 +548,7 @@ We should also see our image, kernel, and initramfs in S3:
 s3cmd ls -Hr s3://boot-images | grep compute/base
 ```
 
-The output should akin to:
+The output should be akin to:
 
 ```
 2025-07-20 17:01  1436M  s3://boot-images/compute/base/rocky9.6-compute-base-rocky9
@@ -624,7 +625,7 @@ If you have the time (or have questions) on the image builder config format, tak
 Build this image:
 
 ```bash
-podman run --rm --device /dev/fuse -e S3_ACCESS=admin -e S3_SECRET=admin123 -v /opt/workdir/images/compute-debug-rocky9.yaml:/home/builder/config.yaml ghcr.io/openchami/image-build:latest image-build --config config.yaml --log-level DEBUG
+podman run --rm --device /dev/fuse -e S3_ACCESS=admin -e S3_SECRET=admin123 -v /opt/workdir/images/compute-debug-rocky9.yaml:/home/builder/config.yaml ghcr.io/openchami/image-build-el9:v0.1.1 image-build --config config.yaml --log-level DEBUG
 ```
 
 ### 2.4.7 Verify Boot Artifact Creation
@@ -669,7 +670,101 @@ to fetch them and copy them somewhere. E.g:
 - `boot-images/efi-images/compute/debug/initramfs-<REPLACE WITH ACTUAL KERNEL VERSION>.el9_6.x86_64.img`
 - `boot-images/efi-images/compute/debug/vmlinuz-<REPLACE WITH ACTUAL KERNEL VERSION>.el9_6.x86_64`
 
+The following one-liner can be used to print the actual URLs:
+
+```
+s3cmd ls -Hr s3://boot-images | grep compute/debug | awk '{print $4}' | sed 's-s3://-http://172.16.0.254:9000/-'
+```
+
 Keep these handy!
+
+### 2.4.8 Simplify Image Build Command
+
+We can create a function for the image-building command so we don't have to type out that long Podman c
+ommand each time.
+
+**Edit as root:** **`/etc/profile.d/build-image.sh`**
+
+```bash
+build-image-rh9()
+{
+    if [ -z "$1" ]; then
+        echo 'Path to image config file required.' 1>&2;
+        return 1;
+    fi;
+    if [ ! -f "$1" ]; then
+        echo "$1 does not exist." 1>&2;
+        return 1;
+    fi;
+    podman run \
+            --rm \
+            --device /dev/fuse \
+            -e S3_ACCESS=admin \
+            -e S3_SECRET=admin123 \
+            -v "$(realpath $1)":/home/builder/config.yaml:Z \
+            ${EXTRA_PODMAN_ARGS} \
+            ghcr.io/openchami/image-build-el9:v0.1.1 \
+            image-build \
+                --config config.yaml \
+                --log-level DEBUG
+}
+
+build-image-rh8()
+{
+    if [ -z "$1" ]; then
+        echo 'Path to image config file required.' 1>&2;
+        return 1;
+    fi;
+    if [ ! -f "$1" ]; then
+        echo "$1 does not exist." 1>&2;
+        return 1;
+    fi;
+    podman run \
+           --rm \
+           --device /dev/fuse \
+           -e S3_ACCESS=admin \
+           -e S3_SECRET=admin123 \
+           -v "$(realpath $1)":/home/builder/config.yaml:Z \
+           ${EXTRA_PODMAN_ARGS} \
+           ghcr.io/openchami/image-build:v0.1.0 \
+           image-build \
+                --config config.yaml \
+                --log-level DEBUG
+}
+alias build-image=build-image-rh9
+```
+
+This will be applied on every login, so source it to apply the current session:
+
+
+```bash
+source /etc/profile.d/build-image.sh
+```
+
+Now, we can build images with:
+
+```
+build-image /path/to/image/config.yaml
+```
+
+We can ensure that our alias is getting used:
+
+```
+$ which build-image
+alias build-image='build-image-rh9'
+        build-image-rh9 ()
+        {
+            if [ -z "$1" ]; then
+                echo 'Path to image config file required.' 1>&2;
+                return 1;
+            fi;
+            if [ ! -f "$1" ]; then
+                echo "$1 does not exist." 1>&2;
+                return 1;
+            fi;
+            podman run --rm --device /dev/fuse -e S3_ACCESS=admin -e S3_SECRET=admin123 -v "$(realpath $1)":/home/builder/config.yaml:Z ${EXTRA_PODMAN_ARGS} ghcr.io/openchami/image-build-el9:v0.1.1 image-build --config config.yaml --log-level DEBUG
+        }
+```
 
 🛑 ***STOP HERE***
 ---
@@ -698,15 +793,28 @@ Create a directory for our boot configs:
 mkdir -p /opt/workdir/boot
 ```
 
-Then, edit the file below where:
+Then, create the payload for BSS, **/opt/workdir/boot/boot-compute-debug.yaml**, that contains the URIs for the boot artifacts:
 
-- `kernel` is the kernel URL. It starts with `http://172.16.0.254:9000/` and ends with the kernel path that we copied from the `s3cmd` output earlier (everything past `s3://`)
-- `initrd` is the initramfs URL. It starts with `http://172.16.0.254:9000/` and ends with the initramfs path that we copied from the `s3cmd` output earlier (everything past `s3://`)
-- `params` is the kernel command line arguments. Copy the ones from the line below, **but change the `root=` parameter to point to the SquashFS image**
-  - The format is `root=live:http://172.16.0.254:9000/` concatenated with the path to the SquashFS image obtained from `s3cmd` eariler (everything past `s3://`)
-- `macs` is the list of MAC addresses corresponding to the boot interface for our virtual compute nodes. These can be verbatim.
+```bash
+URIS=$(s3cmd ls -Hr s3://boot-images | grep compute/debug | awk '{print $4}' | sed 's-s3://-http://172.16.0.254:9000/-' | xargs)
+URI_IMG=$(echo "$URIS" | cut -d' ' -f1)
+URI_INITRAMFS=$(echo "$URIS" | cut -d' ' -f2)
+URI_KERNEL=$(echo "$URIS" | cut -d' ' -f3)
+cat <<EOF | tee /opt/workdir/boot/boot-compute-debug.yaml
+---
+kernel: '${URI_KERNEL}'
+initrd: '${URI_INITRAMFS}'
+params: 'nomodeset ro root=live:${URI_IMG} ip=dhcp overlayroot=tmpfs overlayroot_cfgdisk=disabled apparmor=0 selinux=0 console=ttyS0,115200 ip6=off cloud-init=enabled ds=nocloud-net;s=http://172.16.0.254:8081/cloud-init'
+macs:
+  - 52:54:00:be:ef:01
+  - 52:54:00:be:ef:02
+  - 52:54:00:be:ef:03
+  - 52:54:00:be:ef:04
+  - 52:54:00:be:ef:05
+EOF
+```
 
-**Edit as normal user: `/opt/workdir/boot/boot-compute-debug.yaml`**
+Examine the tee output to make sure that the URIs got populated properly. For example:
 
 > [!WARNING]
 > Your file will not look like the one below due to differences in kernel versions over time.
@@ -847,7 +955,7 @@ Cloud-Init (and maybe SSH) will fail (since we haven't set it up yet), but that'
 
 > [!TIP]
 > If you see this error below when trying to boot the compute node, make sure you have editted the `/etc/openchami/configs/coredhcp.yaml` config file in section 1.4.1 and restart `coredhcp` with `systemctl restart coresmd`.
-> 
+>
 > ```bash
 > >>Start PXE over IPv4.
 >  PXE-E18: Server response timeout.
@@ -913,9 +1021,20 @@ The new that was generated can be found in `~/.ssh/id_ed25519.pub`. We're going 
 cat ~/.ssh/id_ed25519.pub
 ```
 
-Create `ci-defaults.yaml` with the following content, replacing the `<YOUR SSH KEY GOES HERE>` line with your SSH public key from above:
+Create `ci-defaults.yaml`, setting the cluster-wide default values including the SSH key created above:
 
-**Edit as normal user: `/opt/workdir/cloud-init/ci-defaults.yaml`**
+```bash
+cat <<EOF | tee /opt/workdir/cloud-init/ci-defaults.yaml
+---
+base-url: "http://172.16.0.254:8081/cloud-init"
+cluster-name: "demo"
+nid-length: 3
+public-keys:
+  - "$(cat ~/.ssh/id_ed25519.pub)"
+short-name: "nid"
+EOF
+```
+The content should be, e.g:
 
 ```yaml
 ---
@@ -923,7 +1042,7 @@ base-url: "http://172.16.0.254:8081/cloud-init"
 cluster-name: "demo"
 nid-length: 3
 public-keys:
-- "<YOUR SSH KEY GOES HERE>"
+- "ssh-ed25519 AAAA... rocky@host"
 short-name: "nid"
 ```
 
@@ -1100,7 +1219,7 @@ First, we will need to know the paths to the boot artifacts for the compute imag
 s3cmd ls -Hr s3://boot-images/ | awk '{print $4}' | grep base
 ```
 
-We should see:
+We should see (remember, your versions will be different):
 
 ```
 s3://boot-images/compute/base/rocky9.6-compute-base-rocky9
@@ -1108,22 +1227,28 @@ s3://boot-images/efi-images/compute/base/initramfs-5.14.0-570.21.1.el9_6.x86_64.
 s3://boot-images/efi-images/compute/base/vmlinuz-5.14.0-570.21.1.el9_6.x86_64
 ```
 
-Let's create `boot-compute.yaml` with these values.
+Let's create `boot-compute.yaml` with these values, using the same method we used to create the debug boot parameters.
 
-**Edit as normal user: `/opt/workdir/boot/boot-compute-base.yaml`**
-
-kernel: 'http://172.16.0.254:9000/boot-images/efi-images/compute/base/vmlinuz-5.14.0-570.26.1.el9_6.x86_64'
-initrd: 'http://172.16.0.254:9000/boot-images/efi-images/compute/base/initramfs-5.14.0-570.26.1.el9_6.x86_64.img'
-params: 'nomodeset ro root=live:http://172.16.0.254:9000/boot-images/compute/base/rocky9.6-compute-base-rocky9 ip=dhcp overlayroot=tmpfs overlayroot_cfgdisk=disabled apparmor=0 selinux=0 console=ttyS0,115200 ip6=off cloud-init=enabled ds=nocloud-net;s=http://172.16.0.254:8081/cloud-init'
+```
+URIS=$(s3cmd ls -Hr s3://boot-images | grep compute/base | awk '{print $4}' | sed 's-s3://-http://172.16.0.254:9000/-' | xargs)
+URI_IMG=$(echo "$URIS" | cut -d' ' -f1)
+URI_INITRAMFS=$(echo "$URIS" | cut -d' ' -f2)
+URI_KERNEL=$(echo "$URIS" | cut -d' ' -f3)
+cat <<EOF | tee /opt/workdir/boot/boot-compute-base.yaml
+---
+kernel: '${URI_KERNEL}'
+initrd: '${URI_INITRAMFS}'
+params: 'nomodeset ro root=live:${URI_IMG} ip=dhcp overlayroot=tmpfs overlayroot_cfgdisk=disabled apparmor=0 selinux=0 console=ttyS0,115200 ip6=off cloud-init=enabled ds=nocloud-net;s=http://172.16.0.254:8081/cloud-init'
 macs:
   - 52:54:00:be:ef:01
   - 52:54:00:be:ef:02
   - 52:54:00:be:ef:03
   - 52:54:00:be:ef:04
   - 52:54:00:be:ef:05
+EOF
 ```
 
-We should only have to change `debug` to `base` compared to out debug boot configuration since the images we built before should be similar.
+As before, it's a good idea to check that these URIs work before applying the config.
 
 Then, we can set these new parameters with:
 
