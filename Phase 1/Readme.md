@@ -329,7 +329,8 @@ openchami.target
 ● ├─bss-init.service
 ● ├─bss.service
 ● ├─cloud-init-server.service
-● ├─coresmd.service
+● ├─coresmd-coredhcp.service
+● ├─coresmd-coredns.service
 ● ├─haproxy.service
 ● ├─hydra-gen-jwks.service
 ● ├─hydra-migrate.service
@@ -338,6 +339,7 @@ openchami.target
 ● ├─opaal.service
 ● ├─openchami-cert-trust.service
 ● ├─postgres.service
+● ├─smd-init.service
 ● ├─smd.service
 ● └─step-ca.service
 ```
@@ -517,7 +519,8 @@ OpenCHAMI tokens last for an hour by default. Whenever one needs to be regenerat
    ● ├─bss-init.service
    ● ├─bss.service
    ● ├─cloud-init-server.service
-   ● ├─coresmd.service
+   ● ├─coresmd-coredhcp.service
+   ● ├─coresmd-coredns.service
    ● ├─haproxy.service
    ● ├─hydra-gen-jwks.service
    ● ├─hydra-migrate.service
@@ -526,6 +529,7 @@ OpenCHAMI tokens last for an hour by default. Whenever one needs to be regenerat
    ● ├─opaal.service
    ● ├─openchami-cert-trust.service
    ● ├─postgres.service
+   ● ├─smd-init.service
    ● ├─smd.service
    ● └─step-ca.service
    ```
