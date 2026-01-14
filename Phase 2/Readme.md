@@ -217,7 +217,7 @@ cd /opt/workdir/images
 
 * To build images, we'll use a containerized version of [image-builder](https://github.com/OpenCHAMI/image-builder)
 * To interact with images organized in the OCI registry, we'll use [regclient](https://github.com/regclient/regclient/)
-* To interact with versitygw for S3-compatible object storage, we'll use [s3cmd](https://s3tools.org/s3cmd)
+* To interact with versitygw for S3-compatible object storage, we'll use [s3cmd](https://s3tools.org/s3cmd) and [aws](https://github.com/aws/aws-cli) CLI
 
 ### 2.3.2 Install and Configure `regctl`
 
