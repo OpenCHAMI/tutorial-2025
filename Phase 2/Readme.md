@@ -104,25 +104,22 @@ Static discovery happens via `ochami` by giving it a static discovery file. "Dis
 
 **Example (do not copy or use):**
 ```yaml
-- name: node01
+bmcs:
+- xname: x1000c0s0b0
+  mac: de:ca:fc:0f:fe:e1
+  ip: 172.16.0.101
+nodes:
+- name: compute1
   nid: 1
-  xname: x1000c1s7b0n0
-  bmc_mac: de:ca:fc:0f:ee:ee
-  bmc_ip: 172.16.0.101
-  group: compute
+  xname: x1000c0s0b0n0
+  groups:
+  - compute
   interfaces:
-  - mac_addr: de:ad:be:ee:ee:f1
+  - mac_addr: 52:54:00:be:ef:01
     ip_addrs:
-    - name: internal
+    - name: management
       ip_addr: 172.16.0.1
-  - mac_addr: de:ad:be:ee:ee:f2
-    ip_addrs:
-    - name: external
-      ip_addr: 10.15.3.100
-  - mac_addr: 02:00:00:91:31:b3
-    ip_addrs:
-    - name: HSN
-      ip_addr: 192.168.0.1
+  bmc: x1000c0s0b0
 ```
 
 ### 2.2.3 "Discover" your nodes
