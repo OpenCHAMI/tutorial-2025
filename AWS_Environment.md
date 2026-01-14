@@ -46,7 +46,7 @@ packages:
 # Post-package installation commands
 runcmd:
   - dnf install -y epel-release
-  - dnf install -y s3cmd
+  - dnf install -y s3cmd awscli
   - systemctl enable --now libvirtd
   - newgrp libvirt
   - usermod -aG libvirt rocky
