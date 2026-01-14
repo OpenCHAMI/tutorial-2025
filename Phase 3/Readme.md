@@ -17,7 +17,7 @@ At this point, we can use what we have learned so far in the OpenCHAMI tutorial 
 
 ## Serve Images Using NFS Instead of HTTP
 
-For this tutorial, we served images via HTTP using a local S3 bucket (MinIO) and OCI registry. We could instead serve our images using NFS by setting up and running a NFS server on the head node, include NFS tools in our base image, and configuring our nodes to work with NFS.
+For this tutorial, we served images via HTTP using a local S3 bucket (versitygw) and OCI registry. We could instead serve our images using NFS by setting up and running a NFS server on the head node, include NFS tools in our base image, and configuring our nodes to work with NFS.
 
 ## Customize Boot Image and Operating System
 
