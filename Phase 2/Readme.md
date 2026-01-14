@@ -247,7 +247,7 @@ The output should be:
 }
 ```
 
-### 2.3.3 Install and Configure S3 Client
+### 2.3.3 Install and Configure S3 Clients
 
 > [!NOTE]
 > Make sure you are running the below commands as the `rocky` user and not using `sudo` or a root shell. `s3cmd` configs are _only_ user-level configs (meaning they live in the running user's home directory) and we want to make sure they get read.
@@ -256,7 +256,13 @@ The output should be:
 
 **Edit as normal user: `/home/rocky/.s3cfg`**
 
-```ini
+```bash
+# Add ROOT_ACCESS_KEY and ROOT_SECRET_KEY to the shell environment
+# for later use
+source <(sudo cat /etc/versitygw/secrets.env)
+
+# Create the s3cmd config file
+cat <<EOF | tee "${HOME}/.s3cfg"
 # Setup endpoint
 host_base = demo.openchami.cluster:7070
 host_bucket = demo.openchami.cluster:7070
@@ -264,29 +270,43 @@ bucket_location = us-east-1
 use_https = False
 
 # Setup access keys
-access_key = admin
-secret_key = admin123
+access_key = ${ROOT_ACCESS_KEY}
+secret_key = ${ROOT_SECRET_KEY}
 
 # Enable S3 v4 signature APIs
 signature_v2 = False
+EOF
+```
+
+We also will briefly need to use the `aws` CLI to ensure proper configuration
+of ACLs for `versitygw` buckets as the XML schema used by `s3cmd` for this
+operation is not compatible.
+
+```bash
+aws configure set aws_access_key_id "${ROOT_ACCESS_KEY}"
+aws configure set aws_secret_access_key "${ROOT_SECRET_KEY}"
+aws configure set region us-east-1
 ```
 
 ### 2.3.4 Create and Configure S3 Buckets
 
 ```bash
 s3cmd mb s3://efi
-s3cmd setacl s3://efi --acl-public
+s3cmd setownership s3://efi BucketOwnerPreferred
+aws s3api put-bucket-acl --bucket efi --acl public-read --endpoint-url http://localhost:7070
 s3cmd mb s3://boot-images
-s3cmd setacl s3://boot-images --acl-public
+s3cmd setownership s3://boot-images BucketOwnerPreferred
+aws s3api put-bucket-acl --bucket boot-images --acl public-read --endpoint-url http://localhost:7070
 ```
+
 
 You should see the following output:
 
 ```
 Bucket 's3://efi/' created
-s3://efi/: ACL set to Public
+s3://efi/: Bucket Object Ownership updated
 Bucket 's3://boot-images/' created
-s3://boot-images/: ACL set to Public
+s3://boot-images/: Bucket Object Ownership updated
 ```
 
 Set the policy to allow public downloads from versitygw's boot-images bucket:
@@ -344,6 +364,33 @@ We should see the two that got created with `s3cmd ls`:
 ```
 2025-04-22 15:24  s3://boot-images
 2025-04-22 15:24  s3://efi
+```
+
+You can obtain more information using `s3cmd info <bucket-name>`. For example, with `s3cmd info s3://boot-images`:
+
+```
+s3://boot-images/ (bucket):
+   Location:  us-east-1
+   Payer:     none
+   Ownership: BucketOwnerPreferred
+   Versioning:none
+   Expiration rule: none
+   Block Public Access: none
+   Policy:    {
+  "Version":"2012-10-17",
+  "Statement":[
+    {
+      "Effect":"Allow",
+      "Principal":"*",
+      "Action":["s3:GetObject"],
+      "Resource":["arn:aws:s3:::boot-images/*"]
+    }
+  ]
+}
+
+   CORS:      none
+   ACL:       1b835f0cce711c0ab5668c05afaff93d: FULL_CONTROL
+   ACL:       all-users: READ
 ```
 
 ## 2.4 Building System Images
@@ -507,7 +554,7 @@ Notice that this time, we push both to the OCI registry _and_ S3. We will be usi
 Let's build the base compute image:
 
 ```bash
-podman run --rm --device /dev/fuse --network host -e S3_ACCESS=admin -e S3_SECRET=admin123 -v /opt/workdir/images/compute-base-rocky9.yaml:/home/builder/config.yaml ghcr.io/openchami/image-build-el9:v0.1.1 image-build --config config.yaml --log-level DEBUG
+podman run --rm --device /dev/fuse --network host -e S3_ACCESS="${ROOT_ACCESS_KEY}" -e S3_SECRET="${ROOT_SECRET_KEY}" -v /opt/workdir/images/compute-base-rocky9.yaml:/home/builder/config.yaml ghcr.io/openchami/image-build-el9:v0.1.1 image-build --config config.yaml --log-level DEBUG
 ```
 
 This won't take as long as the base image since we are only installing packages on top of the already-built filesystem. This time, since we are pushing to S3 (and we passed `--log-level DEBUG`) we will see _a lot_ of S3 output. We should see in the output:
@@ -625,7 +672,7 @@ If you have the time (or have questions) on the image builder config format, tak
 Build this image:
 
 ```bash
-podman run --rm --device /dev/fuse -e S3_ACCESS=admin -e S3_SECRET=admin123 -v /opt/workdir/images/compute-debug-rocky9.yaml:/home/builder/config.yaml ghcr.io/openchami/image-build-el9:v0.1.1 image-build --config config.yaml --log-level DEBUG
+podman run --rm --device /dev/fuse -e S3_ACCESS="${ROOT_ACCESS_KEY}" -e S3_SECRET="${ROOT_SECRET_KEY}" -v /opt/workdir/images/compute-debug-rocky9.yaml:/home/builder/config.yaml ghcr.io/openchami/image-build-el9:v0.1.1 image-build --config config.yaml --log-level DEBUG
 ```
 
 ### 2.4.7 Verify Boot Artifact Creation
@@ -696,11 +743,12 @@ build-image-rh9()
         echo "$1 does not exist." 1>&2;
         return 1;
     fi;
+    source <(sudo cat /etc/versitygw/secrets.env);
     podman run \
             --rm \
             --device /dev/fuse \
-            -e S3_ACCESS=admin \
-            -e S3_SECRET=admin123 \
+            -e S3_ACCESS="${ROOT_ACCESS_KEY}" \
+            -e S3_SECRET="${ROOT_SECRET_KEY}" \
             -v "$(realpath $1)":/home/builder/config.yaml:Z \
             ${EXTRA_PODMAN_ARGS} \
             ghcr.io/openchami/image-build-el9:v0.1.1 \
@@ -719,11 +767,12 @@ build-image-rh8()
         echo "$1 does not exist." 1>&2;
         return 1;
     fi;
+    source <(sudo cat /etc/versitygw/secrets.env);
     podman run \
            --rm \
            --device /dev/fuse \
-           -e S3_ACCESS=admin \
-           -e S3_SECRET=admin123 \
+            -e S3_ACCESS="${ROOT_ACCESS_KEY}" \
+            -e S3_SECRET="${ROOT_SECRET_KEY}" \
            -v "$(realpath $1)":/home/builder/config.yaml:Z \
            ${EXTRA_PODMAN_ARGS} \
            ghcr.io/openchami/image-build:v0.1.0 \
@@ -762,7 +811,8 @@ alias build-image='build-image-rh9'
                 echo "$1 does not exist." 1>&2;
                 return 1;
             fi;
-            podman run --rm --device /dev/fuse -e S3_ACCESS=admin -e S3_SECRET=admin123 -v "$(realpath $1)":/home/builder/config.yaml:Z ${EXTRA_PODMAN_ARGS} ghcr.io/openchami/image-build-el9:v0.1.1 image-build --config config.yaml --log-level DEBUG
+            source <(sudo cat /etc/versitygw/secrets.env);
+            podman run --rm --device /dev/fuse -e S3_ACCESS="${ROOT_ACCESS_KEY}" -e S3_SECRET="${ROOT_SECRET_KEY}" -v "$(realpath $1)":/home/builder/config.yaml:Z ${EXTRA_PODMAN_ARGS} ghcr.io/openchami/image-build-el9:v0.1.1 image-build --config config.yaml --log-level DEBUG
         }
 ```
 
