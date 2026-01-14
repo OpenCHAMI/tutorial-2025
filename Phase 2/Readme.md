@@ -215,7 +215,7 @@ cd /opt/workdir/images
 
 * To build images, we'll use a containerized version of [image-builder](https://github.com/OpenCHAMI/image-builder)
 * To interact with images organized in the OCI registry, we'll use [regclient](https://github.com/regclient/regclient/)
-* To interact with Minio for S3-compatible object storage, we'll use [s3cmd](https://s3tools.org/s3cmd)
+* To interact with versitygw for S3-compatible object storage, we'll use [s3cmd](https://s3tools.org/s3cmd)
 
 ### 2.3.2 Install and Configure `regctl`
 
@@ -289,7 +289,7 @@ Bucket 's3://boot-images/' created
 s3://boot-images/: ACL set to Public
 ```
 
-Set the policy to allow public downloads from minio's boot-images bucket:
+Set the policy to allow public downloads from versitygw's boot-images bucket:
 
 **Edit as normal user: `/opt/workdir/s3-public-read-boot.json`**
 
