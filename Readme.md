@@ -17,7 +17,7 @@ The cloud-based instance provided for this class is detailed in [AWS_Environment
   - Bridge device (e.g. `br0`)
 - **Storage**:
   - NFS (or equivalent) export for `/var/lib/ochami/images`
-  - MinIO (or S3) with credentials ready
+  - versitygw (or S3) with credentials ready
   - OCI Container registry with credentials ready
 - **Tools**:
   - `tcpdump`, `tftp`, `virsh`, `curl`
@@ -42,9 +42,9 @@ A quick snapshot of the data flows:
 
 1. **Instance Preparation**
    - Host packages, kernel modules, cgroups, bridge setup, nfs setup
-   - Deploy MinIO, nginx, and registry
+   - Deploy versitygw, nginx, and registry
    - Checkpoints:
-     - `systemctl status minio`
+     - `systemctl status versitygw`
      - `systemctl status registry`
 2. **OpenCHAMI & Core Services**
    - Install OpenCHAMI RPMs
@@ -99,7 +99,7 @@ A quick snapshot of the data flows:
 
 ## 🔐 Security & Best Practices
 
-- **Insecure default credentials** (MinIO, CoreDHCP admin).
+- **Insecure default credentials** (versitygw, CoreDHCP admin).
 - **Use TLS** for API endpoints and registry.
 - **Isolate VLANs** for provisioning traffic.
 - **Harden** cloud-init scripts: avoid embedding secrets in plaintext.
