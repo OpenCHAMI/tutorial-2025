@@ -264,6 +264,58 @@ EOF
 
 This will allow the compute node later in the tutorial to request its PXE script.
 
+### 1.4.2 Update `coredns` Configuration
+
+For `coredns`, we need to edit the `/etc/openchami/configs/Corefile` config file for our setup as follows:
+
+```
+cat <<EOF | sudo tee /etc/openchami/configs/Corefile
+.:1053 {
+    # Enable readiness endpoint.
+    #ready
+
+    # Bind Prometheus metrics endpoint.
+    prometheus 0.0.0.0:9153
+
+    # Bind to specific IP address.
+    #bind 172.16.0.254
+
+    # Specify DNS forwarders.
+    #forward . 8.8.8.8
+
+    # Generate DNS records based on BMC and node data in SMD.
+    coresmd {
+        # Base URI of OpenCHAMI cluster. The SMD base endpoint is appended to this
+        # when requesting node and BMC data from SMD.
+        smd_url https://demo.openchami.cluster:8443
+
+        # Path to CA certificate bundle to use when verifying TLS for smd_url.
+        #ca_cert /root_ca/root_ca.crt
+
+        # Frequency to update the SMD data cache.
+        cache_duration 30s
+
+        # DNS zone configurations based on records generated from SMD data.
+        zone openchami.cluster {
+            # Besides generating DNS records for nodes based on xname, a custom
+            # record format can be specified based on the node ID. For instance:
+            #
+            # nodes de{03d}
+            #
+            # will produce:
+            #
+            # de001.openchami.cluster
+            #
+            # for node ID 1 and domain openchami.cluster.
+            nodes nid{03d}
+        }
+    }
+}
+EOF
+```
+
+The default `Corefile` provided with the installation serves primarily as a template and without these changes, the `coredns` service will fail to start. In summary, above we reconfigure the port assignment to avoid conflicts with `dnsmasq` and `aardvark` while also ensuring an endpoint has been configured for `smd_url`.
+
 ## 1.5 Configure Cluster FQDN for Certificates
 
 OpenCHAMI includes a minimal, open source certificate authority from [Smallstep](https://smallstep.com/) that is run via the `step-ca` service. The certificate generation and deployment happens as follows:
