@@ -557,6 +557,9 @@ Let's build the base compute image:
 podman run --rm --device /dev/fuse --network host -e S3_ACCESS="${ROOT_ACCESS_KEY}" -e S3_SECRET="${ROOT_SECRET_KEY}" -v /opt/workdir/images/compute-base-rocky9.yaml:/home/builder/config.yaml ghcr.io/openchami/image-build-el9:v0.1.1 image-build --config config.yaml --log-level DEBUG
 ```
 
+> [!NOTE]
+> If you find yourself with the error "The AWS Access Key Id you provided does not exist in our records.", determine whether values have been set for environment variables `ROOT_ACCESS_KEY` and `ROOT_SECRET_KEY` by observing the output of `env | grep KEY`. If no definitions exist for these variables, re-run the following command to pull them back in: `source <(sudo cat /etc/versitygw/secrets.env)`.
+
 This won't take as long as the base image since we are only installing packages on top of the already-built filesystem. This time, since we are pushing to S3 (and we passed `--log-level DEBUG`) we will see _a lot_ of S3 output. We should see in the output:
 
 ```
@@ -674,9 +677,6 @@ Build this image:
 ```bash
 podman run --rm --device /dev/fuse -e S3_ACCESS="${ROOT_ACCESS_KEY}" -e S3_SECRET="${ROOT_SECRET_KEY}" -v /opt/workdir/images/compute-debug-rocky9.yaml:/home/builder/config.yaml ghcr.io/openchami/image-build-el9:v0.1.1 image-build --config config.yaml --log-level DEBUG
 ```
-
-> [!NOTE]
-> If you find yourself with the error "The AWS Access Key Id you provided does not exist in our records.", determine whether values have been set for environment variables `ROOT_ACCESS_KEY` and `ROOT_SECRET_KEY` by observing the output of `env | grep KEY`. If no definitions exist for these variables, re-run the following command to pull them back in: `source <(sudo cat /etc/versitygw/secrets.env)`.
 
 ### 2.4.7 Verify Boot Artifact Creation
 
