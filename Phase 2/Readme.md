@@ -256,8 +256,6 @@ The output should be:
 
 `s3cmd` was installed during the AWS setup, so we just need to create a user config file.
 
-**Edit as normal user: `/home/rocky/.s3cfg`**
-
 ```bash
 # Add ROOT_ACCESS_KEY and ROOT_SECRET_KEY to the shell environment
 # for later use
