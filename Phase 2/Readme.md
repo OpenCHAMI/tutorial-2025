@@ -254,7 +254,7 @@ The output should be:
 > [!NOTE]
 > Make sure you are running the below commands as the `rocky` user and not using `sudo` or a root shell. `s3cmd` configs are _only_ user-level configs (meaning they live in the running user's home directory) and we want to make sure they get read.
 
-`s3cmd` was installed during the AWS setup, so we just need to create a user config file.
+`s3cmd` was installed during the AWS setup, but we need to create a user-level config file to use it with our local S3 server. Since we'll need to specify access credentials, let's pull in the server environment file and generate `${HOME}/.s3cfg` with a heredoc:
 
 ```bash
 # Add ROOT_ACCESS_KEY and ROOT_SECRET_KEY to the shell environment
