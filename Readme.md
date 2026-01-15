@@ -17,7 +17,7 @@ The cloud-based instance provided for this class is detailed in [AWS_Environment
   - Bridge device (e.g. `br0`)
 - **Storage**:
   - NFS (or equivalent) export for `/var/lib/ochami/images`
-  - versitygw (or S3) with credentials ready
+  - Versity S3 Gateway with credentials ready
   - OCI Container registry with credentials ready
 - **Tools**:
   - `tcpdump`, `tftp`, `virsh`, `curl`
@@ -42,7 +42,7 @@ A quick snapshot of the data flows:
 
 1. **Instance Preparation**
    - Host packages, kernel modules, cgroups, bridge setup, nfs setup
-   - Deploy versitygw, nginx, and registry
+   - Deploy versitygw (Versity S3 Gateway), nginx, and registry
    - Checkpoints:
      - `systemctl status versitygw`
      - `systemctl status registry`

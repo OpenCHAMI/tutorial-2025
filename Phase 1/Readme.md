@@ -2,7 +2,7 @@
 
 1. **Instance Preparation**
    - Host packages, kernel modules, cgroups, bridge setup, storage directories setup
-   - Deploy versitygw, nginx, and registry
+   - Deploy versitygw (Versity S3 Gateway), nginx, and registry
    - Checkpoints:
      - `systemctl status versitygw`
      - `systemctl status registry`
@@ -130,7 +130,7 @@ echo "172.16.0.254 demo.openchami.cluster" | sudo tee -a /etc/hosts > /dev/null
 
 ### 1.3.1 S3
 
-For our S3 gateway, we will use a pre-built RPM to install and configure [versitygw](https://github.com/versity/versitygw) for deployment as a quadlet.
+For our S3 gateway, we will use a pre-built RPM to install and configure [versitygw](https://github.com/versity/versitygw) (Versity S3 Gateway) for deployment as a quadlet.
 
 ```bash
 # Download the latest release RPM
