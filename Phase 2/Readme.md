@@ -774,8 +774,8 @@ build-image-rh8()
     podman run \
            --rm \
            --device /dev/fuse \
-            -e S3_ACCESS="${ROOT_ACCESS_KEY}" \
-            -e S3_SECRET="${ROOT_SECRET_KEY}" \
+           -e S3_ACCESS="${ROOT_ACCESS_KEY}" \
+           -e S3_SECRET="${ROOT_SECRET_KEY}" \
            -v "$(realpath $1)":/home/builder/config.yaml:Z \
            ${EXTRA_PODMAN_ARGS} \
            ghcr.io/openchami/image-build:v0.1.0 \
