@@ -1,4 +1,6 @@
-# OpenCHAMI Tutorial
+# OBSOLETE OpenCHAMI Tutorial
+
+**This repository has been archived in favor of https://openchami.org/docs/tutorial**
 
 Welcome to the OpenCHAMI hands-on tutorial! This guide walks you through building a complete PXE-boot & cloud-init environment for HPC compute nodes using libvirt/KVM.
 
