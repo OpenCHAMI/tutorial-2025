@@ -104,25 +104,22 @@ Static discovery happens via `ochami` by giving it a static discovery file. "Dis
 
 **Example (do not copy or use):**
 ```yaml
-- name: node01
+bmcs:
+- xname: x1000c0s0b0
+  mac: de:ca:fc:0f:fe:e1
+  ip: 172.16.0.101
+nodes:
+- name: compute1
   nid: 1
-  xname: x1000c1s7b0n0
-  bmc_mac: de:ca:fc:0f:ee:ee
-  bmc_ip: 172.16.0.101
-  group: compute
+  xname: x1000c0s0b0n0
+  groups:
+  - compute
   interfaces:
-  - mac_addr: de:ad:be:ee:ee:f1
+  - mac_addr: 52:54:00:be:ef:01
     ip_addrs:
-    - name: internal
+    - name: management
       ip_addr: 172.16.0.1
-  - mac_addr: de:ad:be:ee:ee:f2
-    ip_addrs:
-    - name: external
-      ip_addr: 10.15.3.100
-  - mac_addr: 02:00:00:91:31:b3
-    ip_addrs:
-    - name: HSN
-      ip_addr: 192.168.0.1
+  bmc: x1000c0s0b0
 ```
 
 ### 2.2.3 "Discover" your nodes
@@ -157,6 +154,7 @@ The output should be:
   "ID": "x1000c0s0b0n0",
   "NID": 1,
   "Role": "Compute",
+  "State": "On",
   "Type": "Node"
 }
 {
@@ -164,6 +162,7 @@ The output should be:
   "ID": "x1000c0s0b1n0",
   "NID": 2,
   "Role": "Compute",
+  "State": "On",
   "Type": "Node"
 }
 {
@@ -171,6 +170,7 @@ The output should be:
   "ID": "x1000c0s0b2n0",
   "NID": 3,
   "Role": "Compute",
+  "State": "On",
   "Type": "Node"
 }
 {
@@ -178,6 +178,7 @@ The output should be:
   "ID": "x1000c0s0b3n0",
   "NID": 4,
   "Role": "Compute",
+  "State": "On",
   "Type": "Node"
 }
 {
@@ -185,6 +186,7 @@ The output should be:
   "ID": "x1000c0s0b4n0",
   "NID": 5,
   "Role": "Compute",
+  "State": "On",
   "Type": "Node"
 }
 ```
@@ -215,7 +217,7 @@ cd /opt/workdir/images
 
 * To build images, we'll use a containerized version of [image-builder](https://github.com/OpenCHAMI/image-builder)
 * To interact with images organized in the OCI registry, we'll use [regclient](https://github.com/regclient/regclient/)
-* To interact with Minio for S3-compatible object storage, we'll use [s3cmd](https://s3tools.org/s3cmd)
+* To interact with versitygw for S3-compatible object storage, we'll use [s3cmd](https://s3tools.org/s3cmd) and [aws](https://github.com/aws/aws-cli) CLI
 
 ### 2.3.2 Install and Configure `regctl`
 
@@ -247,49 +249,67 @@ The output should be:
 }
 ```
 
-### 2.3.3 Install and Configure S3 Client
+### 2.3.3 Install and Configure S3 Clients
 
 > [!NOTE]
 > Make sure you are running the below commands as the `rocky` user and not using `sudo` or a root shell. `s3cmd` configs are _only_ user-level configs (meaning they live in the running user's home directory) and we want to make sure they get read.
 
-`s3cmd` was installed during the AWS setup, so we just need to create a user config file.
+`s3cmd` was installed during the AWS setup, but we need to create a user-level config file to use it with our local S3 server. Since we'll need to specify access credentials, let's pull in the server environment file and generate `${HOME}/.s3cfg` with a heredoc:
 
-**Edit as normal user: `/home/rocky/.s3cfg`**
+```bash
+# Add ROOT_ACCESS_KEY and ROOT_SECRET_KEY to the shell environment
+# for later use
+source <(sudo cat /etc/versitygw/secrets.env)
 
-```ini
+# Create the s3cmd config file
+cat <<EOF | tee "${HOME}/.s3cfg"
 # Setup endpoint
-host_base = demo.openchami.cluster:9000
-host_bucket = demo.openchami.cluster:9000
+host_base = demo.openchami.cluster:7070
+host_bucket = demo.openchami.cluster:7070
 bucket_location = us-east-1
 use_https = False
 
 # Setup access keys
-access_key = admin
-secret_key = admin123
+access_key = ${ROOT_ACCESS_KEY}
+secret_key = ${ROOT_SECRET_KEY}
 
 # Enable S3 v4 signature APIs
 signature_v2 = False
+EOF
+```
+
+We also will briefly need to use the `aws` CLI to ensure proper configuration
+of ACLs for `versitygw` buckets as the XML schema used by `s3cmd` for this
+operation is not compatible.
+
+```bash
+aws configure set aws_access_key_id "${ROOT_ACCESS_KEY}"
+aws configure set aws_secret_access_key "${ROOT_SECRET_KEY}"
+aws configure set region us-east-1
 ```
 
 ### 2.3.4 Create and Configure S3 Buckets
 
 ```bash
 s3cmd mb s3://efi
-s3cmd setacl s3://efi --acl-public
+s3cmd setownership s3://efi BucketOwnerPreferred
+aws s3api put-bucket-acl --bucket efi --acl public-read --endpoint-url http://localhost:7070
 s3cmd mb s3://boot-images
-s3cmd setacl s3://boot-images --acl-public
+s3cmd setownership s3://boot-images BucketOwnerPreferred
+aws s3api put-bucket-acl --bucket boot-images --acl public-read --endpoint-url http://localhost:7070
 ```
+
 
 You should see the following output:
 
 ```
 Bucket 's3://efi/' created
-s3://efi/: ACL set to Public
+s3://efi/: Bucket Object Ownership updated
 Bucket 's3://boot-images/' created
-s3://boot-images/: ACL set to Public
+s3://boot-images/: Bucket Object Ownership updated
 ```
 
-Set the policy to allow public downloads from minio's boot-images bucket:
+Set the policy to allow public downloads from versitygw's boot-images bucket:
 
 **Edit as normal user: `/opt/workdir/s3-public-read-boot.json`**
 
@@ -324,12 +344,12 @@ Set the policy to allow public downloads from minio's boot-images bucket:
 ```
 ```bash
 s3cmd setpolicy /opt/workdir/s3-public-read-boot.json s3://boot-images \
-    --host=172.16.0.254:9000 \
-    --host-bucket=172.16.0.254:9000
+    --host=172.16.0.254:7070 \
+    --host-bucket=172.16.0.254:7070
 
 s3cmd setpolicy /opt/workdir/s3-public-read-efi.json s3://efi \
-    --host=172.16.0.254:9000 \
-    --host-bucket=172.16.0.254:9000
+    --host=172.16.0.254:7070 \
+    --host-bucket=172.16.0.254:7070
 ```
 
 You should see the following command output:
@@ -344,6 +364,33 @@ We should see the two that got created with `s3cmd ls`:
 ```
 2025-04-22 15:24  s3://boot-images
 2025-04-22 15:24  s3://efi
+```
+
+You can obtain more information using `s3cmd info <bucket-name>`. For example, with `s3cmd info s3://boot-images`:
+
+```
+s3://boot-images/ (bucket):
+   Location:  us-east-1
+   Payer:     none
+   Ownership: BucketOwnerPreferred
+   Versioning:none
+   Expiration rule: none
+   Block Public Access: none
+   Policy:    {
+  "Version":"2012-10-17",
+  "Statement":[
+    {
+      "Effect":"Allow",
+      "Principal":"*",
+      "Action":["s3:GetObject"],
+      "Resource":["arn:aws:s3:::boot-images/*"]
+    }
+  ]
+}
+
+   CORS:      none
+   ACL:       1b835f0cce711c0ab5668c05afaff93d: FULL_CONTROL
+   ACL:       all-users: READ
 ```
 
 ## 2.4 Building System Images
@@ -471,7 +518,7 @@ options:
     - '--tls-verify=false'
 
   # Publish SquashFS image to local S3
-  publish_s3: 'http://demo.openchami.cluster:9000'
+  publish_s3: 'http://demo.openchami.cluster:7070'
   s3_prefix: 'compute/base/'
   s3_bucket: 'boot-images'
 
@@ -507,8 +554,11 @@ Notice that this time, we push both to the OCI registry _and_ S3. We will be usi
 Let's build the base compute image:
 
 ```bash
-podman run --rm --device /dev/fuse --network host -e S3_ACCESS=admin -e S3_SECRET=admin123 -v /opt/workdir/images/compute-base-rocky9.yaml:/home/builder/config.yaml ghcr.io/openchami/image-build-el9:v0.1.1 image-build --config config.yaml --log-level DEBUG
+podman run --rm --device /dev/fuse --network host -e S3_ACCESS="${ROOT_ACCESS_KEY}" -e S3_SECRET="${ROOT_SECRET_KEY}" -v /opt/workdir/images/compute-base-rocky9.yaml:/home/builder/config.yaml ghcr.io/openchami/image-build-el9:v0.1.1 image-build --config config.yaml --log-level DEBUG
 ```
+
+> [!NOTE]
+> If you find yourself with the error "The AWS Access Key Id you provided does not exist in our records.", determine whether values have been set for environment variables `ROOT_ACCESS_KEY` and `ROOT_SECRET_KEY` by observing the output of `env | grep KEY`. If no definitions exist for these variables, re-run the following command to pull them back in: `source <(sudo cat /etc/versitygw/secrets.env)`.
 
 This won't take as long as the base image since we are only installing packages on top of the already-built filesystem. This time, since we are pushing to S3 (and we passed `--log-level DEBUG`) we will see _a lot_ of S3 output. We should see in the output:
 
@@ -578,7 +628,7 @@ options:
     - '--tls-verify=false'
 
   # Publish to local S3
-  publish_s3: 'http://172.16.0.254:9000'
+  publish_s3: 'http://172.16.0.254:7070'
   s3_prefix: 'compute/debug/'
   s3_bucket: 'boot-images'
 
@@ -600,10 +650,10 @@ If you have the time (or have questions) on the image builder config format, tak
     - '--tls-verify=false'
   ```
 
-- Push the image to `http://172.16.0.254:9000/boot-images/compute/debug/` in S3:
+- Push the image to `http://172.16.0.254:7070/boot-images/compute/debug/` in S3:
 
   ```yaml
-  publish_s3: 'http://172.16.0.254:9000'
+  publish_s3: 'http://172.16.0.254:7070'
   s3_prefix: 'compute/debug/'
   s3_bucket: 'boot-images'
   ```
@@ -625,7 +675,7 @@ If you have the time (or have questions) on the image builder config format, tak
 Build this image:
 
 ```bash
-podman run --rm --device /dev/fuse -e S3_ACCESS=admin -e S3_SECRET=admin123 -v /opt/workdir/images/compute-debug-rocky9.yaml:/home/builder/config.yaml ghcr.io/openchami/image-build-el9:v0.1.1 image-build --config config.yaml --log-level DEBUG
+podman run --rm --device /dev/fuse -e S3_ACCESS="${ROOT_ACCESS_KEY}" -e S3_SECRET="${ROOT_SECRET_KEY}" -v /opt/workdir/images/compute-debug-rocky9.yaml:/home/builder/config.yaml ghcr.io/openchami/image-build-el9:v0.1.1 image-build --config config.yaml --log-level DEBUG
 ```
 
 ### 2.4.7 Verify Boot Artifact Creation
@@ -673,7 +723,7 @@ to fetch them and copy them somewhere. E.g:
 The following one-liner can be used to print the actual URLs:
 
 ```
-s3cmd ls -Hr s3://boot-images | grep compute/debug | awk '{print $4}' | sed 's-s3://-http://172.16.0.254:9000/-'
+s3cmd ls -Hr s3://boot-images | grep compute/debug | awk '{print $4}' | sed 's-s3://-http://172.16.0.254:7070/-'
 ```
 
 Keep these handy!
@@ -696,11 +746,12 @@ build-image-rh9()
         echo "$1 does not exist." 1>&2;
         return 1;
     fi;
+    source <(sudo cat /etc/versitygw/secrets.env);
     podman run \
             --rm \
             --device /dev/fuse \
-            -e S3_ACCESS=admin \
-            -e S3_SECRET=admin123 \
+            -e S3_ACCESS="${ROOT_ACCESS_KEY}" \
+            -e S3_SECRET="${ROOT_SECRET_KEY}" \
             -v "$(realpath $1)":/home/builder/config.yaml:Z \
             ${EXTRA_PODMAN_ARGS} \
             ghcr.io/openchami/image-build-el9:v0.1.1 \
@@ -719,11 +770,12 @@ build-image-rh8()
         echo "$1 does not exist." 1>&2;
         return 1;
     fi;
+    source <(sudo cat /etc/versitygw/secrets.env);
     podman run \
            --rm \
            --device /dev/fuse \
-           -e S3_ACCESS=admin \
-           -e S3_SECRET=admin123 \
+           -e S3_ACCESS="${ROOT_ACCESS_KEY}" \
+           -e S3_SECRET="${ROOT_SECRET_KEY}" \
            -v "$(realpath $1)":/home/builder/config.yaml:Z \
            ${EXTRA_PODMAN_ARGS} \
            ghcr.io/openchami/image-build:v0.1.0 \
@@ -762,7 +814,8 @@ alias build-image='build-image-rh9'
                 echo "$1 does not exist." 1>&2;
                 return 1;
             fi;
-            podman run --rm --device /dev/fuse -e S3_ACCESS=admin -e S3_SECRET=admin123 -v "$(realpath $1)":/home/builder/config.yaml:Z ${EXTRA_PODMAN_ARGS} ghcr.io/openchami/image-build-el9:v0.1.1 image-build --config config.yaml --log-level DEBUG
+            source <(sudo cat /etc/versitygw/secrets.env);
+            podman run --rm --device /dev/fuse -e S3_ACCESS="${ROOT_ACCESS_KEY}" -e S3_SECRET="${ROOT_SECRET_KEY}" -v "$(realpath $1)":/home/builder/config.yaml:Z ${EXTRA_PODMAN_ARGS} ghcr.io/openchami/image-build-el9:v0.1.1 image-build --config config.yaml --log-level DEBUG
         }
 ```
 
@@ -796,7 +849,7 @@ mkdir -p /opt/workdir/boot
 Then, create the payload for BSS, **/opt/workdir/boot/boot-compute-debug.yaml**, that contains the URIs for the boot artifacts:
 
 ```bash
-URIS=$(s3cmd ls -Hr s3://boot-images | grep compute/debug | awk '{print $4}' | sed 's-s3://-http://172.16.0.254:9000/-' | xargs)
+URIS=$(s3cmd ls -Hr s3://boot-images | grep compute/debug | awk '{print $4}' | sed 's-s3://-http://172.16.0.254:7070/-' | xargs)
 URI_IMG=$(echo "$URIS" | cut -d' ' -f1)
 URI_INITRAMFS=$(echo "$URIS" | cut -d' ' -f2)
 URI_KERNEL=$(echo "$URIS" | cut -d' ' -f3)
@@ -821,9 +874,9 @@ Examine the tee output to make sure that the URIs got populated properly. For ex
 > Be sure to update with the output of `s3cmd ls` as stated above!
 
 ```yaml
-kernel: 'http://172.16.0.254:9000/boot-images/efi-images/compute/debug/vmlinuz-5.14.0-570.26.1.el9_6.x86_64'
-initrd: 'http://172.16.0.254:9000/boot-images/efi-images/compute/debug/initramfs-5.14.0-570.26.1.el9_6.x86_64.img'
-params: 'nomodeset ro root=live:http://172.16.0.254:9000/boot-images/compute/debug/rocky9.6-compute-debug-rocky9 ip=dhcp overlayroot=tmpfs overlayroot_cfgdisk=disabled apparmor=0 selinux=0 console=ttyS0,115200 ip6=off cloud-init=enabled ds=nocloud-net;s=http://172.16.0.254:8081/cloud-init'
+kernel: 'http://172.16.0.254:7070/boot-images/efi-images/compute/debug/vmlinuz-5.14.0-570.26.1.el9_6.x86_64'
+initrd: 'http://172.16.0.254:7070/boot-images/efi-images/compute/debug/initramfs-5.14.0-570.26.1.el9_6.x86_64.img'
+params: 'nomodeset ro root=live:http://172.16.0.254:7070/boot-images/compute/debug/rocky9.6-compute-debug-rocky9 ip=dhcp overlayroot=tmpfs overlayroot_cfgdisk=disabled apparmor=0 selinux=0 console=ttyS0,115200 ip6=off cloud-init=enabled ds=nocloud-net;s=http://172.16.0.254:8081/cloud-init'
 macs:
   - 52:54:00:be:ef:01
   - 52:54:00:be:ef:02
@@ -859,15 +912,15 @@ The output should be akin to:
         pub_key_ecdsa: ""
         pub_key_rsa: ""
     user-data: null
-  initrd: http://172.16.0.254:9000/boot-images/efi-images/compute/debug/initramfs-5.14.0-570.26.1.el9_6.x86_64.img
-  kernel: http://172.16.0.254:9000/boot-images/efi-images/compute/debug/vmlinuz-5.14.0-570.26.1.el9_6.x86_64
+  initrd: http://172.16.0.254:7070/boot-images/efi-images/compute/debug/initramfs-5.14.0-570.26.1.el9_6.x86_64.img
+  kernel: http://172.16.0.254:7070/boot-images/efi-images/compute/debug/vmlinuz-5.14.0-570.26.1.el9_6.x86_64
   macs:
     - 52:54:00:be:ef:01
     - 52:54:00:be:ef:02
     - 52:54:00:be:ef:03
     - 52:54:00:be:ef:04
     - 52:54:00:be:ef:05
-  params: nomodeset ro root=live:http://172.16.0.254:9000/boot-images/compute/debug/rocky9.6-compute-debug-rocky9 ip=dhcp overlayroot=tmpfs overlayroot_cfgdisk=disabled apparmor=0 selinux=0 console=ttyS0,115200 ip6=off cloud-init=enabled ds=nocloud-net;s=http://172.16.0.254:8081/cloud-init
+  params: nomodeset ro root=live:http://172.16.0.254:7070/boot-images/compute/debug/rocky9.6-compute-debug-rocky9 ip=dhcp overlayroot=tmpfs overlayroot_cfgdisk=disabled apparmor=0 selinux=0 console=ttyS0,115200 ip6=off cloud-init=enabled ds=nocloud-net;s=http://172.16.0.254:8081/cloud-init
 ```
 
 The things to check are:
@@ -938,8 +991,8 @@ Configuring (net0 52:54:00:be:ef:01)...... ok
 tftp://172.16.0.254:69/config.ipxe... ok
 Booting from http://172.16.0.254:8081/boot/v1/bootscript?mac=52:54:00:be:ef:01
 http://172.16.0.254:8081/boot/v1/bootscript... ok
-http://172.16.0.254:9000/boot-images/efi-images/compute/debug/vmlinuz-5.14.0-570.26.1.el9_6.x86_64... ok
-http://172.16.0.254:9000/boot-images/efi-images/compute/debug/initramfs-5.14.0-570.26.1.el9_6.x86_64.img... ok
+http://172.16.0.254:7070/boot-images/efi-images/compute/debug/vmlinuz-5.14.0-570.26.1.el9_6.x86_64... ok
+http://172.16.0.254:7070/boot-images/efi-images/compute/debug/initramfs-5.14.0-570.26.1.el9_6.x86_64.img... ok
 ```
 
 During Linux boot, we should see the SquashFS image get downloaded and loaded.
@@ -1230,7 +1283,7 @@ s3://boot-images/efi-images/compute/base/vmlinuz-5.14.0-570.21.1.el9_6.x86_64
 Let's create `boot-compute.yaml` with these values, using the same method we used to create the debug boot parameters.
 
 ```
-URIS=$(s3cmd ls -Hr s3://boot-images | grep compute/base | awk '{print $4}' | sed 's-s3://-http://172.16.0.254:9000/-' | xargs)
+URIS=$(s3cmd ls -Hr s3://boot-images | grep compute/base | awk '{print $4}' | sed 's-s3://-http://172.16.0.254:7070/-' | xargs)
 URI_IMG=$(echo "$URIS" | cut -d' ' -f1)
 URI_INITRAMFS=$(echo "$URIS" | cut -d' ' -f2)
 URI_KERNEL=$(echo "$URIS" | cut -d' ' -f3)
@@ -1275,15 +1328,15 @@ They should match the file above:
         pub_key_ecdsa: ""
         pub_key_rsa: ""
     user-data: null
-  initrd: http://172.16.0.254:9000/boot-images/efi-images/compute/base/initramfs-5.14.0-570.26.1.el9_6.x86_64.img
-  kernel: http://172.16.0.254:9000/boot-images/efi-images/compute/base/vmlinuz-5.14.0-570.26.1.el9_6.x86_64
+  initrd: http://172.16.0.254:7070/boot-images/efi-images/compute/base/initramfs-5.14.0-570.26.1.el9_6.x86_64.img
+  kernel: http://172.16.0.254:7070/boot-images/efi-images/compute/base/vmlinuz-5.14.0-570.26.1.el9_6.x86_64
   macs:
     - 52:54:00:be:ef:01
     - 52:54:00:be:ef:02
     - 52:54:00:be:ef:03
     - 52:54:00:be:ef:04
     - 52:54:00:be:ef:05
-  params: nomodeset ro root=live:http://172.16.0.254:9000/boot-images/compute/base/rocky9.6-compute-base-rocky9 ip=dhcp overlayroot=tmpfs overlayroot_cfgdisk=disabled apparmor=0 selinux=0 console=ttyS0,115200 ip6=off cloud-init=enabled ds=nocloud-net;s=http://172.16.0.254:8081/cloud-init
+  params: nomodeset ro root=live:http://172.16.0.254:7070/boot-images/compute/base/rocky9.6-compute-base-rocky9 ip=dhcp overlayroot=tmpfs overlayroot_cfgdisk=disabled apparmor=0 selinux=0 console=ttyS0,115200 ip6=off cloud-init=enabled ds=nocloud-net;s=http://172.16.0.254:8081/cloud-init
 ```
 
 ### 2.8.2 Booting the Compute Node
@@ -1337,8 +1390,8 @@ Configuring (net0 52:54:00:be:ef:01)...... ok
 tftp://172.16.0.254:69/config.ipxe... ok
 Booting from http://172.16.0.254:8081/boot/v1/bootscript?mac=52:54:00:be:ef:01
 http://172.16.0.254:8081/boot/v1/bootscript... ok
-http://172.16.0.254:9000/boot-images/efi-images/compute/base/vmlinuz-5.14.0-570.26.1.el9_6.x86_64... ok
-http://172.16.0.254:9000/boot-images/efi-images/compute/base/initramfs-5.14.0-570.26.1.el9_6.x86_64.img... ok
+http://172.16.0.254:7070/boot-images/efi-images/compute/base/vmlinuz-5.14.0-570.26.1.el9_6.x86_64... ok
+http://172.16.0.254:7070/boot-images/efi-images/compute/base/initramfs-5.14.0-570.26.1.el9_6.x86_64.img... ok
 ```
 
 > [!WARNING]

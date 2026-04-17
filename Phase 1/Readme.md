@@ -2,9 +2,9 @@
 
 1. **Instance Preparation**
    - Host packages, kernel modules, cgroups, bridge setup, storage directories setup
-   - Deploy MinIO, nginx, and registry
+   - Deploy versitygw (Versity S3 Gateway), nginx, and registry
    - Checkpoints:
-     - `systemctl status minio`
+     - `systemctl status versitygw`
      - `systemctl status registry`
 2. **OpenCHAMI & Core Services**
    - Install OpenCHAMI RPMs
@@ -50,21 +50,13 @@
 
 ## 1.1 Set Up Storage Directories
 
-Our tutorial uses S3 to serve the system images (in SquashFS format) for the diskless VMs. A container registry is also used to store system images (in OCI format) for reuse in other image layers (we'll go over this later).
-They all need separate directories.
+Our tutorial uses a container registry to store system images (in OCI format) for reuse in other image layers (we'll go over this later).
 
 Create a local directory for storing the container images:
 
 ```bash
 sudo mkdir -p /data/oci
 sudo chown -R rocky: /data/oci
-```
-
-Create a local directory for S3 access to images:
-
-```bash
-sudo mkdir -p /data/s3
-sudo chown -R rocky: /data/s3
 ```
 
 SELinux treats home directories specially. To avoid cgroups conflicting with SELinux enforcement, we set up a working directory outside our home directory:
@@ -138,40 +130,14 @@ echo "172.16.0.254 demo.openchami.cluster" | sudo tee -a /etc/hosts > /dev/null
 
 ### 1.3.1 S3
 
-For our S3 gateway, we use [Minio](https://github.com/minio/minio) which we'll define as a quadlet and start.
+For our S3 gateway, we will use a pre-built RPM to install and configure [versitygw](https://github.com/versity/versitygw) (Versity S3 Gateway) for deployment as a quadlet.
 
-Like all the OpenCHAMI services, we create a quadlet definition in `/etc/containers/systemd/` for our S3 service.
+```bash
+# Download the latest release RPM
+curl -LO $(curl -s https://api.github.com/repos/openchami/versitygw-quadlet/releases/latest | grep "browser_download_url.*\.rpm" | grep -v "\.src\.rpm" | cut -d '"' -f 4)
 
-**Edit as root: `/etc/containers/systemd/minio.container`**
-
-```ini
-[Unit]
-Description=Minio S3
-After=local-fs.target network-online.target
-Wants=local-fs.target network-online.target
-
-[Container]
-ContainerName=minio-server
-Image=docker.io/minio/minio:latest
-# Volumes
-Volume=/data/s3:/data:Z
-
-# Ports
-PublishPort=9000:9000
-PublishPort=9001:9001
-
-# Environemnt Variables
-Environment=MINIO_ROOT_USER=admin
-Environment=MINIO_ROOT_PASSWORD=admin123
-
-# Command to run in container
-Exec=server /data --console-address :9001
-
-[Service]
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
+# Install the RPM
+sudo dnf install ./versitygw-quadlet-*.noarch.rpm
 ```
 
 ### 1.3.2 Container Registry
@@ -207,31 +173,39 @@ Reload Systemd to update it with our new changes and then start the services:
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl start minio.service
 sudo systemctl start registry.service
+
+# Enable and start secret generation (one-time)
+sudo systemctl enable --now versitygw-gensecrets.service
+
+# Start the versity gateway (generated from Quadlet - cannot be enabled directly)
+sudo systemctl start versitygw.service
+
+# Bootstrap users and buckets
+sudo systemctl enable --now versitygw-bootstrap.service
 ```
 
 ### 1.3.4 Checkpoint
 
-Make sure the S3 (`minio`) and OCI (`registry`) services are up and running.
+Make sure the S3 (`versitygw`) and OCI (`registry`) services are up and running.
 
 **Quickly:**
 
 ```bash
-for s in minio registry; do echo -n "$s: "; systemctl is-failed $s; done
+for s in versitygw registry; do echo -n "$s: "; systemctl is-failed $s; done
 ```
 
 The output should be:
 
 ```
-minio: active
+versitygw: active
 registry: active
 ```
 
 **More detail:**
 
 ```bash
-systemctl status minio
+systemctl status versitygw
 systemctl status registry
 ```
 
@@ -289,6 +263,58 @@ EOF
 ```
 
 This will allow the compute node later in the tutorial to request its PXE script.
+
+### 1.4.2 Update `coredns` Configuration
+
+For `coredns`, we need to edit the `/etc/openchami/configs/Corefile` config file for our setup as follows:
+
+```
+cat <<EOF | sudo tee /etc/openchami/configs/Corefile
+.:1053 {
+    # Enable readiness endpoint.
+    #ready
+
+    # Bind Prometheus metrics endpoint.
+    prometheus 0.0.0.0:9153
+
+    # Bind to specific IP address.
+    #bind 172.16.0.254
+
+    # Specify DNS forwarders.
+    #forward . 8.8.8.8
+
+    # Generate DNS records based on BMC and node data in SMD.
+    coresmd {
+        # Base URI of OpenCHAMI cluster. The SMD base endpoint is appended to this
+        # when requesting node and BMC data from SMD.
+        smd_url https://demo.openchami.cluster:8443
+
+        # Path to CA certificate bundle to use when verifying TLS for smd_url.
+        #ca_cert /root_ca/root_ca.crt
+
+        # Frequency to update the SMD data cache.
+        cache_duration 30s
+
+        # DNS zone configurations based on records generated from SMD data.
+        zone openchami.cluster {
+            # Besides generating DNS records for nodes based on xname, a custom
+            # record format can be specified based on the node ID. For instance:
+            #
+            # nodes de{03d}
+            #
+            # will produce:
+            #
+            # de001.openchami.cluster
+            #
+            # for node ID 1 and domain openchami.cluster.
+            nodes nid{03d}
+        }
+    }
+}
+EOF
+```
+
+The default `Corefile` provided with the installation serves primarily as a template and without these changes, the `coredns` service will fail to start. In summary, above we reconfigure the port assignment to avoid conflicts with `dnsmasq` and `aardvark` while also ensuring an endpoint has been configured for `smd_url`.
 
 ## 1.5 Configure Cluster FQDN for Certificates
 
@@ -355,7 +381,8 @@ openchami.target
 ● ├─bss-init.service
 ● ├─bss.service
 ● ├─cloud-init-server.service
-● ├─coresmd.service
+● ├─coresmd-coredhcp.service
+● ├─coresmd-coredns.service
 ● ├─haproxy.service
 ● ├─hydra-gen-jwks.service
 ● ├─hydra-migrate.service
@@ -364,6 +391,7 @@ openchami.target
 ● ├─opaal.service
 ● ├─openchami-cert-trust.service
 ● ├─postgres.service
+● ├─smd-init.service
 ● ├─smd.service
 ● └─step-ca.service
 ```
@@ -543,7 +571,8 @@ OpenCHAMI tokens last for an hour by default. Whenever one needs to be regenerat
    ● ├─bss-init.service
    ● ├─bss.service
    ● ├─cloud-init-server.service
-   ● ├─coresmd.service
+   ● ├─coresmd-coredhcp.service
+   ● ├─coresmd-coredns.service
    ● ├─haproxy.service
    ● ├─hydra-gen-jwks.service
    ● ├─hydra-migrate.service
@@ -552,6 +581,7 @@ OpenCHAMI tokens last for an hour by default. Whenever one needs to be regenerat
    ● ├─opaal.service
    ● ├─openchami-cert-trust.service
    ● ├─postgres.service
+   ● ├─smd-init.service
    ● ├─smd.service
    ● └─step-ca.service
    ```

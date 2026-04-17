@@ -23,7 +23,7 @@ AWS offers the ability to stand up multiple instances based on the same template
 
 ### Cloud-Init
 
-Just like OpenCHAMI, AWS provides teh ability to inject cloud-config data at runtime.  In the "Advanced details" section of the template or instance definition, you will find a text box for `User data`.  This is what we're using for the tutorial:
+Just like OpenCHAMI, AWS provides the ability to inject cloud-config data at runtime.  In the "Advanced details" section of the template or instance definition, you will find a text box for `User data`.  This is what we're using for the tutorial:
 
 **user-data:**
 ```
@@ -46,7 +46,7 @@ packages:
 # Post-package installation commands
 runcmd:
   - dnf install -y epel-release
-  - dnf install -y s3cmd
+  - dnf install -y s3cmd awscli
   - systemctl enable --now libvirtd
   - newgrp libvirt
   - usermod -aG libvirt rocky
